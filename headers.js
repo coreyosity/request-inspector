@@ -74,6 +74,21 @@ export class HeadersController {
   }
 
   /**
+   * Reload profile headers from storage without resetting manual headers or
+   * the active profile. Called after any profile create/edit/delete.
+   */
+  async refreshProfiles() {
+    this._profileHeaders = [];
+    const profiles = await this._storage.readProfiles();
+    Object.entries(profiles).forEach(([name, { headers = [] }]) => {
+      headers.forEach(({ enabled, key, value }) => {
+        this._profileHeaders.push({ id: this._nextId++, enabled, key, value, source: name });
+      });
+    });
+    this._renderRows();
+  }
+
+  /**
    * Register dynamic declarativeNetRequest rules for all enabled headers
    * (manual + active profile), scoped to the current page's hostname.
    * @param {string} originUrl  The full origin URL of the active tab.

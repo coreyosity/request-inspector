@@ -101,6 +101,33 @@ export class InspectorController {
   }
 
   /**
+   * Reload profile params from storage without resetting the rest of the
+   * inspector state (path, custom params, enabled profile).
+   * Called after any profile create/edit/delete in ProfilesController.
+   */
+  async refreshProfiles() {
+    this._params = this._params.filter(
+      p => p.source === 'default' || p.source === 'custom'
+    );
+
+    const profiles = await this._storage.readProfiles();
+    Object.entries(profiles).forEach(([name, { params }]) => {
+      params.forEach(({ enabled, key, value }) => {
+        this._params.push({ id: this._nextId++, enabled, key, value, source: name });
+      });
+    });
+
+    // Clear active profile if it was deleted or renamed.
+    if (this._enabledProfile && !profiles[this._enabledProfile]) {
+      this._enabledProfile = null;
+      if (this._onProfileEnable) this._onProfileEnable(null);
+    }
+
+    this._renderParamRows();
+    this._updatePreview();
+  }
+
+  /**
    * Enable a profile by name (radio behaviour — disables all others).
    * Re-renders, updates the preview, saves state, and navigates the tab.
    * Called by ProfilesController when the user clicks Apply.

@@ -20,9 +20,10 @@ const inspector = new InspectorController(storage, {
   onProfileEnable: (name)             => headers.enableProfile(name),
 });
 const profiles  = new ProfilesController(storage, {
-  getParams:     ()     => inspector.getParams(),
-  getHeaders:    ()     => headers.getHeaders(),
-  enableProfile: (name) => inspector.enableProfile(name),
+  getParams:        ()     => inspector.getParams(),
+  getHeaders:       ()     => headers.getHeaders(),
+  enableProfile:    (name) => inspector.enableProfile(name),
+  onProfilesChange: ()     => { inspector.refreshProfiles(); headers.refreshProfiles(); },
 });
 
 // ── Main tab switching ─────────────────────────────────────────────────────────

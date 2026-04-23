@@ -15,11 +15,12 @@ export class ProfilesController {
    * @param {import('./storage.js').StorageService} storage
    * @param {{ getParams: () => Array, loadParams: (params: Array) => void }} inspector
    */
-  constructor(storage, { getParams, getHeaders, enableProfile }) {
-    this._storage        = storage;
-    this._getParams      = getParams;
-    this._getHeaders     = getHeaders;
-    this._enableProfile  = enableProfile;
+  constructor(storage, { getParams, getHeaders, enableProfile, onProfilesChange }) {
+    this._storage           = storage;
+    this._getParams         = getParams;
+    this._getHeaders        = getHeaders;
+    this._enableProfile     = enableProfile;
+    this._onProfilesChange  = onProfilesChange ?? null;
 
     /** @type {HTMLElement | null} Currently open edit panel. */
     this._activeEditPanel = null;
@@ -120,6 +121,7 @@ export class ProfilesController {
         this._activeEditPanel = null;
         this._activeEditRow   = null;
       }
+      if (this._onProfilesChange) this._onProfilesChange();
     });
 
     row.append(nameEl, editBtn, loadBtn, deleteBtn);
@@ -251,6 +253,7 @@ export class ProfilesController {
         await this._storage.deleteProfile(originalName);
       }
       await this._storage.saveProfile(newName, serializedParams, serializedHeaders);
+      if (this._onProfilesChange) this._onProfilesChange();
       this.render();
     });
 
@@ -441,6 +444,7 @@ export class ProfilesController {
       renderHeaders();
       this._createProfilePanel.classList.add('hidden');
       this._createProfileBtn.textContent = '+ New';
+      if (this._onProfilesChange) this._onProfilesChange();
       this.render();
     });
 
@@ -473,6 +477,7 @@ export class ProfilesController {
       if (!name) { this._profileNameInput.focus(); return; }
       await this._storage.saveProfile(name, this._getParams(), this._getHeaders());
       this._profileNameInput.value = '';
+      if (this._onProfilesChange) this._onProfilesChange();
       this.render();
     });
 
