@@ -601,6 +601,40 @@ input[type="text"]:focus {
   transform: translateX(0);
 }
 
+/* ── Custom params group in the inspector ─────────────────── */
+.custom-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.btn-save-profile {
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: transparent;
+  color: var(--accent-amber);
+  border: 1px solid var(--accent-amber);
+  transition: background var(--transition);
+  white-space: nowrap;
+}
+
+.btn-save-profile:hover { background: rgba(245, 166, 35, 0.12); }
+
+.save-to-profile-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.save-to-profile-row.hidden { display: none; }
+.save-to-profile-row input  { flex: 1; }
+
 /* ── Preview ───────────────────────────────────────────────── */
 .preview-section {
   display: flex;
