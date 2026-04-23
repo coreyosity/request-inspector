@@ -1,0 +1,355 @@
+/*
+ * MIT License
+ * Copyright (c) 2026 Corey
+ * See LICENSE file for full text.
+ */
+
+/* ── Reset & base ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-base:      #1e2028;
+  --bg-surface:   #262930;
+  --bg-row:       #2c2f3a;
+  --bg-row-hover: #323648;
+  --border:       #3a3f52;
+  --text:         #d4d8e8;
+  --text-muted:   #6b7294;
+  --text-dim:     #454a61;
+  --accent-cyan:  #00d4d8;
+  --accent-amber: #f5a623;
+  --accent-red:   #e05260;
+  --accent-green: #3ddc97;
+  --font-mono:    'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  --radius-sm:    4px;
+  --radius:       6px;
+  --radius-lg:    10px;
+  --transition:   150ms ease;
+}
+
+body {
+  width: 480px;
+  min-height: 200px;
+  background: var(--bg-base);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ── Layout container ──────────────────────────────────────── */
+.container {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-size: 18px;
+  color: var(--accent-cyan);
+}
+
+h1 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+}
+
+/* ── Field groups ──────────────────────────────────────────── */
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-group label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+/* ── Inputs ────────────────────────────────────────────────── */
+input[type="text"] {
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 6px 9px;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+input[type="text"]:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 2px rgba(0, 212, 216, 0.15);
+}
+
+.input-readonly {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.input-editable {
+  color: var(--accent-amber);
+}
+
+/* ── Params section ────────────────────────────────────────── */
+.params-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.params-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.params-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.params-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.params-list::-webkit-scrollbar        { width: 4px; }
+.params-list::-webkit-scrollbar-track  { background: transparent; }
+.params-list::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 2px; }
+
+.params-empty {
+  text-align: center;
+  color: var(--text-dim);
+  padding: 16px 0;
+  font-size: 11px;
+}
+
+/* ── Parameter row ─────────────────────────────────────────── */
+.param-row {
+  display: grid;
+  grid-template-columns: 32px 1fr 1fr 28px;
+  gap: 6px;
+  align-items: center;
+  background: var(--bg-row);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  transition: background var(--transition), opacity var(--transition);
+}
+
+.param-row:hover { background: var(--bg-row-hover); }
+
+.param-row.disabled {
+  opacity: 0.4;
+}
+
+.param-row.disabled input[type="text"] {
+  color: var(--text-dim);
+  text-decoration: line-through;
+}
+
+/* ── Toggle switch ─────────────────────────────────────────── */
+.toggle-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle {
+  position: relative;
+  display: inline-block;
+  width: 24px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.toggle input { opacity: 0; width: 0; height: 0; }
+
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  background: var(--text-dim);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform var(--transition);
+}
+
+.toggle input:checked + .toggle-track             { background: var(--accent-cyan); }
+.toggle input:checked + .toggle-track::after      { transform: translateX(10px); }
+.toggle input:focus-visible + .toggle-track {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 1px;
+}
+
+/* Row inputs inherit the base style but are transparent-background */
+.param-row input[type="text"] {
+  background: transparent;
+  border-color: transparent;
+  padding: 3px 5px;
+  font-size: 11px;
+}
+
+.param-row input[type="text"]:focus {
+  background: var(--bg-surface);
+  border-color: var(--accent-cyan);
+}
+
+.param-key   { color: var(--accent-cyan); }
+.param-value { color: var(--accent-amber); }
+
+/* ── Delete button ─────────────────────────────────────────── */
+.btn-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--transition), border-color var(--transition),
+              background var(--transition);
+}
+
+.btn-delete:hover {
+  color: var(--accent-red);
+  border-color: var(--accent-red);
+  background: rgba(224, 82, 96, 0.1);
+}
+
+/* ── Preview ───────────────────────────────────────────────── */
+.preview-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.preview-section label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.url-preview {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-cyan);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-size: 11px;
+  color: var(--text);
+  word-break: break-all;
+  min-height: 34px;
+  line-height: 1.6;
+}
+
+.url-preview .preview-origin { color: var(--text-muted); }
+.url-preview .preview-path   { color: var(--accent-amber); }
+.url-preview .preview-sep    { color: var(--text-dim); }
+.url-preview .preview-key    { color: var(--accent-cyan); }
+.url-preview .preview-value  { color: var(--text); }
+.url-preview .preview-amp    { color: var(--text-dim); }
+
+/* ── Buttons ───────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.btn {
+  padding: 7px 16px;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background var(--transition), color var(--transition),
+              border-color var(--transition), box-shadow var(--transition);
+}
+
+.btn-primary {
+  background: var(--accent-cyan);
+  color: #0d1117;
+  border-color: var(--accent-cyan);
+}
+
+.btn-primary:hover {
+  background: #00b8bb;
+  border-color: #00b8bb;
+  box-shadow: 0 0 8px rgba(0, 212, 216, 0.35);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+}
+
+.btn-secondary:hover {
+  background: rgba(0, 212, 216, 0.1);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+.btn-ghost:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+/* ── Error state ───────────────────────────────────────────── */
+.url-preview.error {
+  border-left-color: var(--accent-red);
+  color: var(--accent-red);
+}

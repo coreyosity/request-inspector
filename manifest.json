@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Request Inspector",
+  "version": "1.0.0",
+  "description": "Inspect, toggle, and modify the current tab's URL path and query parameters.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "tabs"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Request Inspector"
+  }}

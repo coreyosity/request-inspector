@@ -1,0 +1,66 @@
+<!--
+  MIT License
+  Copyright (c) 2026 Corey
+  See LICENSE file for full text.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Request Inspector</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+
+    <header>
+      <span class="logo">&#x2316;</span>
+      <h1>Request Inspector</h1>
+    </header>
+
+    <!-- Origin (read-only) -->
+    <section class="field-group">
+      <label for="origin-display">Origin</label>
+      <input id="origin-display" type="text" class="input-readonly" readonly
+             placeholder="https://example.com" />
+    </section>
+
+    <!-- Path editor -->
+    <section class="field-group">
+      <label for="path-input">Path</label>
+      <input id="path-input" type="text" class="input-editable"
+             placeholder="/some/path" spellcheck="false" />
+    </section>
+
+    <!-- Query parameters -->
+    <section class="params-section">
+      <div class="params-header">
+        <span class="params-title">Query Parameters</span>
+        <button id="add-param-btn" class="btn btn-secondary" title="Add parameter">
+          + Add Parameter
+        </button>
+      </div>
+
+      <div id="params-list" class="params-list">
+        <!-- rows injected by popup.js -->
+        <div class="params-empty" id="params-empty">No query parameters</div>
+      </div>
+    </section>
+
+    <!-- Live preview -->
+    <section class="preview-section">
+      <label>New URL</label>
+      <div id="url-preview" class="url-preview">—</div>
+    </section>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button id="reset-btn" class="btn btn-ghost">Reset</button>
+      <button id="apply-btn" class="btn btn-primary">Apply &amp; Reload</button>
+    </div>
+
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
