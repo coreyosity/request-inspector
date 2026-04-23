@@ -282,8 +282,6 @@ applyBtn.addEventListener('click', async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
 
-  // Clear the draft — the new URL becomes the source of truth.
-  clearState();
   await chrome.tabs.update(tab.id, { url });
   window.close();
 });
