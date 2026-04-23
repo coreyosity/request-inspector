@@ -26,11 +26,14 @@ export class ProfilesController {
     this._activeEditRow   = null;
 
     // DOM refs
-    this._profileNameInput = document.getElementById('profile-name-input');
-    this._saveProfileBtn   = document.getElementById('save-profile-btn');
-    this._profilesList     = document.getElementById('profiles-list');
-    this._profilesEmpty    = document.getElementById('profiles-empty');
+    this._profileNameInput  = document.getElementById('profile-name-input');
+    this._saveProfileBtn    = document.getElementById('save-profile-btn');
+    this._createProfileBtn  = document.getElementById('create-profile-btn');
+    this._createProfilePanel = document.getElementById('create-profile-panel');
+    this._profilesList      = document.getElementById('profiles-list');
+    this._profilesEmpty     = document.getElementById('profiles-empty');
 
+    this._initCreatePanel();
     this._bindEvents();
   }
 
@@ -40,6 +43,8 @@ export class ProfilesController {
   async render() {
     this._activeEditPanel = null;
     this._activeEditRow   = null;
+    this._createProfilePanel.classList.add('hidden');
+    this._createProfileBtn.textContent = '+ New';
     this._profilesList.querySelectorAll('.profile-entry').forEach(el => el.remove());
     const profiles = await this._storage.readProfiles();
     const names    = Object.keys(profiles);
@@ -270,6 +275,110 @@ export class ProfilesController {
 
     row.append(toggleWrapper, keyInput, valueInput, deleteBtn);
     return row;
+  }
+
+  // ── Create panel ─────────────────────────────────────────────────────────────
+
+  _initCreatePanel() {
+    let createParams = [];
+    let nextId = 0;
+
+    // ── Name field ──
+    const nameLabel       = document.createElement('label');
+    nameLabel.className   = 'edit-panel-label';
+    nameLabel.textContent = 'Name';
+
+    const nameInput      = document.createElement('input');
+    nameInput.type       = 'text';
+    nameInput.className  = 'input-editable profile-edit-name';
+    nameInput.placeholder = 'Profile name…';
+    nameInput.spellcheck = false;
+
+    const nameRow = document.createElement('div');
+    nameRow.className = 'edit-name-row';
+    nameRow.append(nameLabel, nameInput);
+
+    // ── Params sub-list ──
+    const paramsHeader = document.createElement('div');
+    paramsHeader.className = 'edit-panel-params-header';
+
+    const paramsLabel       = document.createElement('span');
+    paramsLabel.className   = 'edit-panel-label';
+    paramsLabel.textContent = 'Parameters';
+
+    const addParamBtn       = document.createElement('button');
+    addParamBtn.className   = 'btn btn-secondary btn-xs';
+    addParamBtn.textContent = '+ Add';
+
+    paramsHeader.append(paramsLabel, addParamBtn);
+
+    const editParamsList = document.createElement('div');
+    editParamsList.className = 'edit-params-list';
+
+    const renderParams = () => {
+      editParamsList.querySelectorAll('.param-row').forEach(el => el.remove());
+      createParams.forEach(p => {
+        editParamsList.appendChild(this._buildEditParamRow(p, createParams, renderParams));
+      });
+    };
+
+    addParamBtn.addEventListener('click', () => {
+      createParams.push({ id: nextId++, enabled: true, key: '', value: '' });
+      renderParams();
+      editParamsList.lastElementChild?.querySelector('.param-key')?.focus();
+    });
+
+    // ── Actions ──
+    const actions = document.createElement('div');
+    actions.className = 'edit-panel-actions';
+
+    const cancelBtn       = document.createElement('button');
+    cancelBtn.className   = 'btn btn-ghost';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', () => {
+      createParams = [];
+      nextId = 0;
+      nameInput.value = '';
+      renderParams();
+      this._createProfilePanel.classList.add('hidden');
+      this._createProfileBtn.textContent = '+ New';
+    });
+
+    const saveBtn       = document.createElement('button');
+    saveBtn.className   = 'btn btn-primary';
+    saveBtn.textContent = 'Create';
+    saveBtn.addEventListener('click', async () => {
+      const name = nameInput.value.trim();
+      if (!name) { nameInput.focus(); return; }
+      const serialized = createParams.map(({ enabled, key, value }) => ({ enabled, key, value }));
+      await this._storage.saveProfile(name, serialized);
+      // Reset panel state
+      createParams = [];
+      nextId = 0;
+      nameInput.value = '';
+      renderParams();
+      this._createProfilePanel.classList.add('hidden');
+      this._createProfileBtn.textContent = '+ New';
+      this.render();
+    });
+
+    actions.append(cancelBtn, saveBtn);
+    this._createProfilePanel.append(nameRow, paramsHeader, editParamsList, actions);
+
+    // Toggle button
+    this._createProfileBtn.addEventListener('click', () => {
+      // Close any open edit panel first
+      if (this._activeEditPanel) {
+        this._activeEditPanel.classList.add('hidden');
+        this._activeEditRow?.classList.remove('editing');
+        this._activeEditPanel = null;
+        this._activeEditRow   = null;
+      }
+      const opening = this._createProfilePanel.classList.contains('hidden');
+      this._createProfilePanel.classList.toggle('hidden', !opening);
+      this._createProfileBtn.textContent = opening ? '✕ Close' : '+ New';
+      if (opening) nameInput.focus();
+    });
   }
 
   // ── Save new profile ─────────────────────────────────────────────────────────
