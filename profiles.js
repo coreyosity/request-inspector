@@ -15,9 +15,10 @@ export class ProfilesController {
    * @param {import('./storage.js').StorageService} storage
    * @param {{ getParams: () => Array, loadParams: (params: Array) => void }} inspector
    */
-  constructor(storage, { getParams, enableProfile }) {
+  constructor(storage, { getParams, getHeaders, enableProfile }) {
     this._storage        = storage;
     this._getParams      = getParams;
+    this._getHeaders     = getHeaders;
     this._enableProfile  = enableProfile;
 
     /** @type {HTMLElement | null} Currently open edit panel. */
@@ -50,24 +51,26 @@ export class ProfilesController {
     const names    = Object.keys(profiles);
     this._profilesEmpty.style.display = names.length === 0 ? 'block' : 'none';
     names.forEach(name => {
-      this._profilesList.appendChild(this._buildEntry(name, profiles[name].params));
+      this._profilesList.appendChild(
+        this._buildEntry(name, profiles[name].params, profiles[name].headers ?? [])
+      );
     });
   }
 
   // ── Entry (row + edit panel) ─────────────────────────────────────────────────
 
-  _buildEntry(name, params) {
+  _buildEntry(name, params, headers) {
     const entry = document.createElement('div');
     entry.className = 'profile-entry';
 
-    const row       = this._buildRow(name, params, entry);
-    const editPanel = this._buildEditPanel(name, params, entry);
+    const row       = this._buildRow(name, params, headers, entry);
+    const editPanel = this._buildEditPanel(name, params, headers, entry);
 
     entry.append(row, editPanel);
     return entry;
   }
 
-  _buildRow(name, params, entry) {
+  _buildRow(name, params, headers, entry) {
     const row = document.createElement('div');
     row.className = 'profile-row';
 
@@ -125,10 +128,12 @@ export class ProfilesController {
 
   // ── Edit panel ───────────────────────────────────────────────────────────────
 
-  _buildEditPanel(originalName, originalParams, entry) {
-    // Deep-copy so Cancel truly discards changes
-    let editParams = originalParams.map((p, i) => ({ id: i, ...p }));
-    let nextId     = editParams.length;
+  _buildEditPanel(originalName, originalParams, originalHeaders, entry) {
+    // Deep-copies so Cancel truly discards changes
+    let editParams   = originalParams.map((p, i) => ({ id: i, ...p }));
+    let editHeaders  = originalHeaders.map((h, i) => ({ id: i, ...h }));
+    let nextParamId  = editParams.length;
+    let nextHeaderId = editHeaders.length;
 
     const panel = document.createElement('div');
     panel.className = 'profile-edit-panel hidden';
@@ -168,14 +173,46 @@ export class ProfilesController {
     const renderEditParams = () => {
       editParamsList.querySelectorAll('.param-row').forEach(el => el.remove());
       editParams.forEach(param => {
-        editParamsList.appendChild(this._buildEditParamRow(param, editParams, renderEditParams));
+        editParamsList.appendChild(this._buildEditRow(param, editParams, renderEditParams));
       });
     };
 
     addParamBtn.addEventListener('click', () => {
-      editParams.push({ id: nextId++, enabled: true, key: '', value: '' });
+      editParams.push({ id: nextParamId++, enabled: true, key: '', value: '' });
       renderEditParams();
       editParamsList.lastElementChild?.querySelector('.param-key')?.focus();
+    });
+
+    // ── Headers sub-list ──
+    const headersHeader = document.createElement('div');
+    headersHeader.className = 'edit-panel-params-header';
+
+    const headersLabel       = document.createElement('span');
+    headersLabel.className   = 'edit-panel-label';
+    headersLabel.textContent = 'Headers';
+
+    const addHeaderBtn       = document.createElement('button');
+    addHeaderBtn.className   = 'btn btn-secondary btn-xs';
+    addHeaderBtn.textContent = '+ Add';
+
+    headersHeader.append(headersLabel, addHeaderBtn);
+
+    const editHeadersList = document.createElement('div');
+    editHeadersList.className = 'edit-params-list';
+
+    const renderEditHeaders = () => {
+      editHeadersList.querySelectorAll('.param-row').forEach(el => el.remove());
+      editHeaders.forEach(header => {
+        editHeadersList.appendChild(
+          this._buildEditRow(header, editHeaders, renderEditHeaders, 'header name')
+        );
+      });
+    };
+
+    addHeaderBtn.addEventListener('click', () => {
+      editHeaders.push({ id: nextHeaderId++, enabled: true, key: '', value: '' });
+      renderEditHeaders();
+      editHeadersList.lastElementChild?.querySelector('.param-key')?.focus();
     });
 
     // ── Actions ──
@@ -186,10 +223,12 @@ export class ProfilesController {
     cancelBtn.className   = 'btn btn-ghost';
     cancelBtn.textContent = 'Cancel';
     cancelBtn.addEventListener('click', () => {
-      // Restore the deep copy so re-opening shows original values
-      editParams = originalParams.map((p, i) => ({ id: i, ...p }));
-      nextId     = editParams.length;
+      editParams  = originalParams.map((p, i) => ({ id: i, ...p }));
+      editHeaders = originalHeaders.map((h, i) => ({ id: i, ...h }));
+      nextParamId  = editParams.length;
+      nextHeaderId = editHeaders.length;
       renderEditParams();
+      renderEditHeaders();
       nameInput.value = originalName;
 
       panel.classList.add('hidden');
@@ -205,39 +244,41 @@ export class ProfilesController {
       const newName = nameInput.value.trim();
       if (!newName) { nameInput.focus(); return; }
 
-      const serialized = editParams.map(({ enabled, key, value }) => ({ enabled, key, value }));
+      const serializedParams   = editParams.map(({ enabled, key, value }) => ({ enabled, key, value }));
+      const serializedHeaders  = editHeaders.map(({ enabled, key, value }) => ({ enabled, key, value }));
 
       if (newName !== originalName) {
         await this._storage.deleteProfile(originalName);
       }
-      await this._storage.saveProfile(newName, serialized);
+      await this._storage.saveProfile(newName, serializedParams, serializedHeaders);
       this.render();
     });
 
     actions.append(cancelBtn, saveBtn);
 
     renderEditParams();
-    panel.append(nameRow, paramsHeader, editParamsList, actions);
+    renderEditHeaders();
+    panel.append(nameRow, paramsHeader, editParamsList, headersHeader, editHeadersList, actions);
     return panel;
   }
 
-  _buildEditParamRow(param, editParams, rerenderFn) {
+  _buildEditRow(item, list, rerenderFn, keyPlaceholder = 'key') {
     const row = document.createElement('div');
-    row.className = 'param-row' + (param.enabled ? '' : ' disabled');
+    row.className = 'param-row' + (item.enabled ? '' : ' disabled');
 
     // Toggle
     const toggleWrapper = document.createElement('div');
     toggleWrapper.className = 'toggle-wrapper';
     const label   = document.createElement('label');
     label.className = 'toggle';
-    label.title   = param.enabled ? 'Disable' : 'Enable';
+    label.title   = item.enabled ? 'Disable' : 'Enable';
     const checkbox = document.createElement('input');
     checkbox.type    = 'checkbox';
-    checkbox.checked = param.enabled;
+    checkbox.checked = item.enabled;
     checkbox.addEventListener('change', () => {
-      param.enabled = checkbox.checked;
-      row.classList.toggle('disabled', !param.enabled);
-      label.title = param.enabled ? 'Disable' : 'Enable';
+      item.enabled = checkbox.checked;
+      row.classList.toggle('disabled', !item.enabled);
+      label.title = item.enabled ? 'Disable' : 'Enable';
     });
     const track = document.createElement('span');
     track.className = 'toggle-track';
@@ -248,19 +289,19 @@ export class ProfilesController {
     const keyInput       = document.createElement('input');
     keyInput.type        = 'text';
     keyInput.className   = 'param-key';
-    keyInput.value       = param.key;
-    keyInput.placeholder = 'key';
+    keyInput.value       = item.key;
+    keyInput.placeholder = keyPlaceholder;
     keyInput.spellcheck  = false;
-    keyInput.addEventListener('input', () => { param.key = keyInput.value; });
+    keyInput.addEventListener('input', () => { item.key = keyInput.value; });
 
     // Value
     const valueInput       = document.createElement('input');
     valueInput.type        = 'text';
     valueInput.className   = 'param-value';
-    valueInput.value       = param.value;
+    valueInput.value       = item.value;
     valueInput.placeholder = 'value';
     valueInput.spellcheck  = false;
-    valueInput.addEventListener('input', () => { param.value = valueInput.value; });
+    valueInput.addEventListener('input', () => { item.value = valueInput.value; });
 
     // Delete
     const deleteBtn       = document.createElement('button');
@@ -268,8 +309,8 @@ export class ProfilesController {
     deleteBtn.title       = 'Remove';
     deleteBtn.textContent = '×';
     deleteBtn.addEventListener('click', () => {
-      const idx = editParams.findIndex(p => p.id === param.id);
-      if (idx !== -1) editParams.splice(idx, 1);
+      const idx = list.findIndex(x => x.id === item.id);
+      if (idx !== -1) list.splice(idx, 1);
       rerenderFn();
     });
 
@@ -280,8 +321,10 @@ export class ProfilesController {
   // ── Create panel ─────────────────────────────────────────────────────────────
 
   _initCreatePanel() {
-    let createParams = [];
-    let nextId = 0;
+    let createParams  = [];
+    let createHeaders = [];
+    let nextParamId   = 0;
+    let nextHeaderId  = 0;
 
     // ── Name field ──
     const nameLabel       = document.createElement('label');
@@ -318,14 +361,46 @@ export class ProfilesController {
     const renderParams = () => {
       editParamsList.querySelectorAll('.param-row').forEach(el => el.remove());
       createParams.forEach(p => {
-        editParamsList.appendChild(this._buildEditParamRow(p, createParams, renderParams));
+        editParamsList.appendChild(this._buildEditRow(p, createParams, renderParams));
       });
     };
 
     addParamBtn.addEventListener('click', () => {
-      createParams.push({ id: nextId++, enabled: true, key: '', value: '' });
+      createParams.push({ id: nextParamId++, enabled: true, key: '', value: '' });
       renderParams();
       editParamsList.lastElementChild?.querySelector('.param-key')?.focus();
+    });
+
+    // ── Headers sub-list ──
+    const headersHeader = document.createElement('div');
+    headersHeader.className = 'edit-panel-params-header';
+
+    const headersLabel       = document.createElement('span');
+    headersLabel.className   = 'edit-panel-label';
+    headersLabel.textContent = 'Headers';
+
+    const addHeaderBtn       = document.createElement('button');
+    addHeaderBtn.className   = 'btn btn-secondary btn-xs';
+    addHeaderBtn.textContent = '+ Add';
+
+    headersHeader.append(headersLabel, addHeaderBtn);
+
+    const editHeadersList = document.createElement('div');
+    editHeadersList.className = 'edit-params-list';
+
+    const renderHeaders = () => {
+      editHeadersList.querySelectorAll('.param-row').forEach(el => el.remove());
+      createHeaders.forEach(h => {
+        editHeadersList.appendChild(
+          this._buildEditRow(h, createHeaders, renderHeaders, 'header name')
+        );
+      });
+    };
+
+    addHeaderBtn.addEventListener('click', () => {
+      createHeaders.push({ id: nextHeaderId++, enabled: true, key: '', value: '' });
+      renderHeaders();
+      editHeadersList.lastElementChild?.querySelector('.param-key')?.focus();
     });
 
     // ── Actions ──
@@ -336,10 +411,13 @@ export class ProfilesController {
     cancelBtn.className   = 'btn btn-ghost';
     cancelBtn.textContent = 'Cancel';
     cancelBtn.addEventListener('click', () => {
-      createParams = [];
-      nextId = 0;
+      createParams  = [];
+      createHeaders = [];
+      nextParamId   = 0;
+      nextHeaderId  = 0;
       nameInput.value = '';
       renderParams();
+      renderHeaders();
       this._createProfilePanel.classList.add('hidden');
       this._createProfileBtn.textContent = '+ New';
     });
@@ -350,20 +428,26 @@ export class ProfilesController {
     saveBtn.addEventListener('click', async () => {
       const name = nameInput.value.trim();
       if (!name) { nameInput.focus(); return; }
-      const serialized = createParams.map(({ enabled, key, value }) => ({ enabled, key, value }));
-      await this._storage.saveProfile(name, serialized);
+      const serializedParams  = createParams.map(({ enabled, key, value }) => ({ enabled, key, value }));
+      const serializedHeaders = createHeaders.map(({ enabled, key, value }) => ({ enabled, key, value }));
+      await this._storage.saveProfile(name, serializedParams, serializedHeaders);
       // Reset panel state
-      createParams = [];
-      nextId = 0;
+      createParams  = [];
+      createHeaders = [];
+      nextParamId   = 0;
+      nextHeaderId  = 0;
       nameInput.value = '';
       renderParams();
+      renderHeaders();
       this._createProfilePanel.classList.add('hidden');
       this._createProfileBtn.textContent = '+ New';
       this.render();
     });
 
     actions.append(cancelBtn, saveBtn);
-    this._createProfilePanel.append(nameRow, paramsHeader, editParamsList, actions);
+    this._createProfilePanel.append(
+      nameRow, paramsHeader, editParamsList, headersHeader, editHeadersList, actions
+    );
 
     // Toggle button
     this._createProfileBtn.addEventListener('click', () => {
@@ -387,7 +471,7 @@ export class ProfilesController {
     this._saveProfileBtn.addEventListener('click', async () => {
       const name = this._profileNameInput.value.trim();
       if (!name) { this._profileNameInput.focus(); return; }
-      await this._storage.saveProfile(name, this._getParams());
+      await this._storage.saveProfile(name, this._getParams(), this._getHeaders());
       this._profileNameInput.value = '';
       this.render();
     });

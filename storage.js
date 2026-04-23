@@ -62,10 +62,11 @@ export class StorageService {
   /**
    * @param {string} name
    * @param {{ enabled: boolean, key: string, value: string }[]} params
+   * @param {{ enabled: boolean, key: string, value: string }[]} [headers]
    */
-  async saveProfile(name, params) {
+  async saveProfile(name, params, headers = []) {
     const profiles = await this.readProfiles();
-    profiles[name] = { params };
+    profiles[name] = { params, headers };
     chrome.storage.local.set({ [PROFILES_KEY]: profiles });
   }
 

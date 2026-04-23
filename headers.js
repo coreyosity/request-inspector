@@ -4,9 +4,10 @@
  * See LICENSE file for full text.
  *
  * headers.js — HeadersController
- * Manages the Headers sub-tab: a list of request headers the user wants to
- * inject. Persists state to chrome.storage.local (via StorageService) and
- * applies rules via chrome.declarativeNetRequest.updateDynamicRules.
+ * Manages the Headers sub-tab: manual request headers plus profile headers.
+ * Manual headers are persisted via StorageService. Profile headers are always
+ * loaded fresh from the profiles store and are read-only in the inspector.
+ * The active profile is synced from InspectorController via enableProfile().
  */
 
 'use strict';
@@ -18,7 +19,11 @@ export class HeadersController {
 
     /** @type {{ id: number, enabled: boolean, key: string, value: string }[]} */
     this._headers = [];
-    this._nextId  = 0;
+    /** @type {{ id: number, enabled: boolean, key: string, value: string, source: string }[]} */
+    this._profileHeaders = [];
+    this._nextId         = 0;
+    /** @type {string|null} */
+    this._enabledProfile = null;
 
     // DOM refs
     this._headersList  = document.getElementById('headers-list');
@@ -30,30 +35,69 @@ export class HeadersController {
 
   // ── Public API ───────────────────────────────────────────────────────────────
 
-  async init() {
-    this._headers = [];
-    this._nextId  = 0;
+  /**
+   * Load manual headers from storage and all profile headers fresh.
+   * @param {string|null} enabledProfile  The currently active profile (from inspector).
+   */
+  async init(enabledProfile = null) {
+    this._headers        = [];
+    this._profileHeaders = [];
+    this._nextId         = 0;
+    this._enabledProfile = enabledProfile;
+
     const saved = await this._storage.loadHeaders();
     if (saved) {
       saved.forEach(({ enabled, key, value }) => {
         this._headers.push({ id: this._nextId++, enabled, key, value });
       });
     }
+
+    const profiles = await this._storage.readProfiles();
+    Object.entries(profiles).forEach(([name, { headers = [] }]) => {
+      headers.forEach(({ enabled, key, value }) => {
+        this._profileHeaders.push({ id: this._nextId++, enabled, key, value, source: name });
+      });
+    });
+
     this._renderRows();
   }
 
   /**
-   * Register dynamic declarativeNetRequest rules for all enabled headers,
-   * scoped to the current page's hostname.
+   * Returns manual headers only (used when saving a profile snapshot).
+   * @returns {{ enabled: boolean, key: string, value: string }[]}
+   */
+  getHeaders() {
+    return this._headers.map(({ enabled, key, value }) => ({ enabled, key, value }));
+  }
+
+  /**
+   * Update the active profile and re-render.
+   * Called by InspectorController whenever _enabledProfile changes.
+   * @param {string|null} name
+   */
+  enableProfile(name) {
+    this._enabledProfile = name;
+    this._renderRows();
+  }
+
+  /**
+   * Register dynamic declarativeNetRequest rules for all enabled headers
+   * (manual + active profile), scoped to the current page's hostname.
    * @param {string} originUrl  The full origin URL of the active tab.
    */
   async applyHeaders(originUrl) {
     try {
-      const existing   = await chrome.declarativeNetRequest.getDynamicRules();
-      const removeIds  = existing.map(r => r.id);
-      const enabled    = this._headers.filter(h => h.enabled && h.key.trim() !== '');
+      const existing  = await chrome.declarativeNetRequest.getDynamicRules();
+      const removeIds = existing.map(r => r.id);
 
-      if (enabled.length === 0) {
+      const manualEnabled  = this._headers.filter(h => h.enabled && h.key.trim() !== '');
+      const profileEnabled = this._enabledProfile
+        ? this._profileHeaders.filter(h =>
+            h.source === this._enabledProfile && h.enabled && h.key.trim() !== '')
+        : [];
+      const allEnabled = [...manualEnabled, ...profileEnabled];
+
+      if (allEnabled.length === 0) {
         if (removeIds.length) {
           await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: removeIds });
         }
@@ -66,7 +110,7 @@ export class HeadersController {
         priority: 1,
         action: {
           type: 'modifyHeaders',
-          requestHeaders: enabled.map(h => ({
+          requestHeaders: allEnabled.map(h => ({
             header:    h.key,
             operation: 'set',
             value:     h.value,
@@ -100,11 +144,45 @@ export class HeadersController {
   // ── Row rendering ────────────────────────────────────────────────────────────
 
   _renderRows() {
-    this._headersList.querySelectorAll('.param-row').forEach(el => el.remove());
-    this._headersEmpty.style.display = this._headers.length === 0 ? 'block' : 'none';
+    this._headersList
+      .querySelectorAll('.param-row, .params-source-header, .profile-group')
+      .forEach(el => el.remove());
+
+    const total = this._headers.length + this._profileHeaders.length;
+    this._headersEmpty.style.display = total === 0 ? 'block' : 'none';
+
+    // Manual headers
     this._headers.forEach(h => this._headersList.appendChild(this._buildRow(h)));
+
+    // Profile header groups — grouped by profile name, wrapped in .profile-group
+    const groups = new Map();
+    this._profileHeaders.forEach(h => {
+      if (!groups.has(h.source)) groups.set(h.source, []);
+      groups.get(h.source).push(h);
+    });
+
+    groups.forEach((groupHeaders, profileName) => {
+      const isActive = profileName === this._enabledProfile;
+      const wrapper  = document.createElement('div');
+      wrapper.className = 'profile-group' + (isActive ? '' : ' inactive');
+
+      // Group label — no toggle here; the profile on/off lives in the params tab
+      const groupLabel     = document.createElement('div');
+      groupLabel.className = 'params-source-header source-profile';
+      const nameEl         = document.createElement('span');
+      nameEl.className     = 'params-source-name';
+      nameEl.textContent   = profileName;
+      const line           = document.createElement('span');
+      line.className       = 'params-source-line';
+      groupLabel.append(nameEl, line);
+
+      wrapper.appendChild(groupLabel);
+      groupHeaders.forEach(h => wrapper.appendChild(this._buildProfileHeaderRow(h)));
+      this._headersList.appendChild(wrapper);
+    });
   }
 
+  /** Editable manual header row. */
   _buildRow(header) {
     const row       = document.createElement('div');
     row.className   = 'param-row' + (header.enabled ? '' : ' disabled');
@@ -162,11 +240,63 @@ export class HeadersController {
     deleteBtn.addEventListener('click', () => {
       this._headers = this._headers.filter(h => h.id !== header.id);
       row.remove();
-      this._headersEmpty.style.display = this._headers.length === 0 ? 'block' : 'none';
+      const total = this._headers.length + this._profileHeaders.length;
+      this._headersEmpty.style.display = total === 0 ? 'block' : 'none';
       this._saveHeaders();
     });
 
     row.append(toggleWrapper, keyInput, valueInput, deleteBtn);
+    return row;
+  }
+
+  /**
+   * Read-only profile header row (toggle is ephemeral — not persisted).
+   * Key and value come from the profile definition and are not editable here.
+   */
+  _buildProfileHeaderRow(header) {
+    const row       = document.createElement('div');
+    row.className   = 'param-row source-profile' + (header.enabled ? '' : ' disabled');
+    row.dataset.id  = header.id;
+
+    // Toggle (ephemeral — not saved back to profile)
+    const toggleWrapper     = document.createElement('div');
+    toggleWrapper.className = 'toggle-wrapper';
+    const label             = document.createElement('label');
+    label.className         = 'toggle';
+    label.title             = header.enabled ? 'Disable header' : 'Enable header';
+    const checkbox          = document.createElement('input');
+    checkbox.type           = 'checkbox';
+    checkbox.checked        = header.enabled;
+    checkbox.addEventListener('change', () => {
+      header.enabled = checkbox.checked;
+      row.classList.toggle('disabled', !header.enabled);
+      label.title = header.enabled ? 'Disable header' : 'Enable header';
+    });
+    const track     = document.createElement('span');
+    track.className = 'toggle-track';
+    label.append(checkbox, track);
+    toggleWrapper.appendChild(label);
+
+    // Key (read-only — edit via profile editor)
+    const keyInput       = document.createElement('input');
+    keyInput.type        = 'text';
+    keyInput.className   = 'param-key';
+    keyInput.value       = header.key;
+    keyInput.placeholder = 'header name';
+    keyInput.readOnly    = true;
+
+    // Value (read-only)
+    const valueInput       = document.createElement('input');
+    valueInput.type        = 'text';
+    valueInput.className   = 'param-value';
+    valueInput.value       = header.value;
+    valueInput.placeholder = 'value';
+    valueInput.readOnly    = true;
+
+    // Spacer keeps grid columns aligned (no delete on profile headers)
+    const spacer = document.createElement('div');
+
+    row.append(toggleWrapper, keyInput, valueInput, spacer);
     return row;
   }
 
@@ -186,7 +316,13 @@ export class HeadersController {
       this._headers.push(header);
       this._headersEmpty.style.display = 'none';
       const row = this._buildRow(header);
-      this._headersList.appendChild(row);
+      // Insert before any profile groups so manual headers stay at the top
+      const firstGroup = this._headersList.querySelector('.profile-group');
+      if (firstGroup) {
+        this._headersList.insertBefore(row, firstGroup);
+      } else {
+        this._headersList.appendChild(row);
+      }
       row.querySelector('.param-key').focus();
       this._saveHeaders();
     });

@@ -16,10 +16,11 @@ export class InspectorController {
    * @param {{ onApply?: (tabId: number, url: string) => Promise<void>,
    *            onReset?: () => Promise<void> }} [callbacks]
    */
-  constructor(storage, { onApply, onReset } = {}) {
-    this._storage  = storage;
-    this._onApply  = onApply ?? null;
-    this._onReset  = onReset ?? null;
+  constructor(storage, { onApply, onReset, onProfileEnable } = {}) {
+    this._storage          = storage;
+    this._onApply          = onApply          ?? null;
+    this._onReset          = onReset          ?? null;
+    this._onProfileEnable  = onProfileEnable  ?? null;
 
     /** @type {{ id: number, enabled: boolean, key: string, value: string, source: string }[]} */
     this._params         = [];
@@ -111,6 +112,11 @@ export class InspectorController {
       .map(({ enabled, key, value }) => ({ enabled, key, value }));
   }
 
+  /** @returns {string|null} */
+  getEnabledProfile() {
+    return this._enabledProfile;
+  }
+
   /**
    * Enable a profile by name (radio behaviour — disables all others).
    * Re-renders, updates the preview, saves state, and navigates the tab.
@@ -119,6 +125,7 @@ export class InspectorController {
    */
   enableProfile(name) {
     this._enabledProfile = name;
+    if (this._onProfileEnable) this._onProfileEnable(name);
     this._renderParamRows();
     this._updatePreview();
     this._saveState();
@@ -207,6 +214,7 @@ export class InspectorController {
     if (isProfile) {
       toggleCheckbox.addEventListener('change', () => {
         this._enabledProfile = toggleCheckbox.checked ? sourceKey : null;
+        if (this._onProfileEnable) this._onProfileEnable(this._enabledProfile);
         this._renderParamRows();
         this._updatePreview();
         this._saveState();

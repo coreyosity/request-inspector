@@ -15,11 +15,13 @@ import { ProfilesController }  from './profiles.js';
 const storage   = new StorageService();
 const headers   = new HeadersController(storage);
 const inspector = new InspectorController(storage, {
-  onApply: async (_tabId, url) => headers.applyHeaders(url),
-  onReset: async ()            => headers.clearRules(),
+  onApply:         async (_tabId, url) => headers.applyHeaders(url),
+  onReset:         async ()            => headers.clearRules(),
+  onProfileEnable: (name)             => headers.enableProfile(name),
 });
 const profiles  = new ProfilesController(storage, {
   getParams:     ()     => inspector.getParams(),
+  getHeaders:    ()     => headers.getHeaders(),
   enableProfile: (name) => inspector.enableProfile(name),
 });
 
@@ -43,5 +45,6 @@ document.querySelectorAll('.tab').forEach(tabBtn => {
 
 // ── Bootstrap ──────────────────────────────────────────────────────────────────
 
-// headers.init() runs after inspector.init() so the storage key is already set.
-inspector.init().then(() => headers.init());
+// headers.init() runs after inspector.init() so the storage key is set and
+// the enabled profile is known before headers loads profile data.
+inspector.init().then(() => headers.init(inspector.getEnabledProfile()));
