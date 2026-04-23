@@ -28,8 +28,8 @@
 }
 
 body {
-  width: 480px;
-  min-height: 200px;
+  width: 580px;
+  height: 460px;
   background: var(--bg-base);
   color: var(--text);
   font-family: var(--font-mono);
@@ -39,6 +39,7 @@ body {
 
 /* ── Layout container ──────────────────────────────────────── */
 .container {
+  height: 100%;
   padding: 14px 16px 16px;
   display: flex;
   flex-direction: column;
@@ -142,12 +143,61 @@ input[type="text"]:focus {
 
 /* ── Tab panels ────────────────────────────────────────────── */
 .tab-panel {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
 .tab-panel.hidden { display: none; }
+
+/* ── Inspector two-column layout ───────────────────────────── */
+#tab-inspector {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 14px;
+}
+
+.inspector-left {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.inspector-left::-webkit-scrollbar        { width: 4px; }
+.inspector-left::-webkit-scrollbar-track  { background: transparent; }
+.inspector-left::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 2px; }
+
+.inspector-right {
+  width: 190px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inspector-right .preview-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inspector-right .url-preview {
+  flex: 1;
+}
+
+.inspector-right .actions {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
 
 /* ── Params section ────────────────────────────────────────── */
 .params-section {
@@ -173,15 +223,7 @@ input[type="text"]:focus {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 240px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
 }
-
-.params-list::-webkit-scrollbar        { width: 4px; }
-.params-list::-webkit-scrollbar-track  { background: transparent; }
-.params-list::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 2px; }
 
 .params-empty {
   text-align: center;
@@ -499,8 +541,6 @@ input[type="text"]:focus {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-  padding-top: 4px;
-  border-top: 1px solid var(--border);
 }
 
 .btn {

@@ -30,44 +30,52 @@
     <!-- ── Inspector tab ── -->
     <div id="tab-inspector" class="tab-panel" role="tabpanel">
 
-      <!-- Origin (read-only) -->
-      <section class="field-group">
-        <label for="origin-display">Origin</label>
-        <input id="origin-display" type="text" class="input-readonly" readonly
-               placeholder="https://example.com" />
-      </section>
+      <div class="inspector-left">
 
-      <!-- Path editor -->
-      <section class="field-group">
-        <label for="path-input">Path</label>
-        <input id="path-input" type="text" class="input-editable"
-               placeholder="/some/path" spellcheck="false" />
-      </section>
+        <!-- Origin (read-only) -->
+        <section class="field-group">
+          <label for="origin-display">Origin</label>
+          <input id="origin-display" type="text" class="input-readonly" readonly
+                 placeholder="https://example.com" />
+        </section>
 
-      <!-- Query parameters -->
-      <section class="params-section">
-        <div class="params-header">
-          <span class="params-title">Query Parameters</span>
-          <button id="add-param-btn" class="btn btn-secondary" title="Add parameter">
-            + Add Parameter
-          </button>
+        <!-- Path editor -->
+        <section class="field-group">
+          <label for="path-input">Path</label>
+          <input id="path-input" type="text" class="input-editable"
+                 placeholder="/some/path" spellcheck="false" />
+        </section>
+
+        <!-- Query parameters -->
+        <section class="params-section">
+          <div class="params-header">
+            <span class="params-title">Query Parameters</span>
+            <button id="add-param-btn" class="btn btn-secondary" title="Add parameter">
+              + Add
+            </button>
+          </div>
+          <div id="params-list" class="params-list">
+            <div class="params-empty" id="params-empty">No query parameters</div>
+          </div>
+        </section>
+
+      </div><!-- /inspector-left -->
+
+      <div class="inspector-right">
+
+        <!-- Live preview -->
+        <section class="preview-section">
+          <label>New URL</label>
+          <div id="url-preview" class="url-preview">—</div>
+        </section>
+
+        <!-- Actions -->
+        <div class="actions">
+          <button id="reset-btn" class="btn btn-ghost">Reset</button>
+          <button id="apply-btn" class="btn btn-primary">Apply</button>
         </div>
-        <div id="params-list" class="params-list">
-          <div class="params-empty" id="params-empty">No query parameters</div>
-        </div>
-      </section>
 
-      <!-- Live preview -->
-      <section class="preview-section">
-        <label>New URL</label>
-        <div id="url-preview" class="url-preview">—</div>
-      </section>
-
-      <!-- Actions -->
-      <div class="actions">
-        <button id="reset-btn" class="btn btn-ghost">Reset</button>
-        <button id="apply-btn" class="btn btn-primary">Apply</button>
-      </div>
+      </div><!-- /inspector-right -->
 
     </div><!-- /tab-inspector -->
 
