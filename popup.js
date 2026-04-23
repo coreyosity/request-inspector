@@ -44,7 +44,51 @@ document.querySelectorAll('.tab').forEach(tabBtn => {
   });
 });
 
+// ── Settings ───────────────────────────────────────────────────────────────────
+
+const $settingsBtn   = document.getElementById('settings-btn');
+const $settingsPanel = document.getElementById('settings-panel');
+const $toggleSP      = document.getElementById('toggle-side-panel');
+
+$settingsBtn.addEventListener('click', () => {
+  const open = $settingsPanel.classList.toggle('hidden');
+  $settingsBtn.classList.toggle('active', !open);
+});
+
+$toggleSP.addEventListener('change', async () => {
+  const enabled = $toggleSP.checked;
+  storage.saveSettings({ sidePanelEnabled: enabled });
+
+  if (enabled) {
+    chrome.runtime.sendMessage({ type: 'RI_OPEN_SIDE_PANEL' });
+  }
+});
+
+async function initSettings() {
+  const settings = await storage.loadSettings();
+  $toggleSP.checked = settings.sidePanelEnabled;
+}
+
+// ── Side panel handoff ─────────────────────────────────────────────────────────
+// When the user clicks "Open in Inspector" in the side panel, the request is
+// stored in session storage. We pick it up here on popup open.
+
+async function checkHandoff() {
+  const stored = await chrome.storage.session.get('ri_inspector_handoff');
+  const req    = stored['ri_inspector_handoff'];
+  if (!req) return;
+
+  await chrome.storage.session.remove('ri_inspector_handoff');
+  inspector.loadFromRequest(req);
+  headers.loadFromRequest(req.requestHeaders ?? {});
+
+  // Switch to the Headers sub-tab so the user immediately sees the captured headers.
+  const headersTab = document.querySelector('.subtab[data-subtab="headers"]');
+  if (headersTab) headersTab.click();
+}
+
 // ── Bootstrap ──────────────────────────────────────────────────────────────────
 
 // headers.init() runs after inspector.init() so the profiles store is ready.
-inspector.init().then(() => headers.init());
+inspector.init().then(() => { headers.init(); checkHandoff(); });
+initSettings();

@@ -10,8 +10,9 @@
 
 'use strict';
 
-const PROFILES_KEY       = 'ri_profiles';
+const PROFILES_KEY        = 'ri_profiles';
 const ENABLED_PROFILE_KEY = 'ri_enabled_profile';
+const SETTINGS_KEY        = 'ri_settings';
 
 export class StorageService {
 
@@ -56,5 +57,18 @@ export class StorageService {
     const profiles = await this.readProfiles();
     delete profiles[name];
     chrome.storage.local.set({ [PROFILES_KEY]: profiles });
+  }
+
+  // ── Settings ──────────────────────────────────────────────────────────────────
+
+  /** @returns {Promise<{ sidePanelEnabled: boolean }>} */
+  async loadSettings() {
+    const result = await chrome.storage.local.get(SETTINGS_KEY);
+    return result[SETTINGS_KEY] ?? { sidePanelEnabled: false };
+  }
+
+  /** @param {{ sidePanelEnabled: boolean }} settings */
+  saveSettings(settings) {
+    chrome.storage.local.set({ [SETTINGS_KEY]: settings });
   }
 }

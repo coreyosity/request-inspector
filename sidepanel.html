@@ -1,0 +1,194 @@
+<!--
+  MIT License
+  Copyright (c) 2026 Corey
+  See LICENSE file for full text.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Request Inspector — Monitor</title>
+  <link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+
+  <!-- ── Monitor view ── -->
+  <div id="view-monitor" class="view active">
+
+    <header class="sp-header">
+      <span class="logo">&#x2316;</span>
+      <span class="sp-title">Monitor</span>
+      <div class="sp-header-actions">
+        <button id="btn-record" class="sp-icon-btn recording" title="Pause recording">&#9646;&#9646;</button>
+        <button id="btn-clear"  class="sp-icon-btn" title="Clear log">&#x2715;</button>
+      </div>
+    </header>
+
+    <div class="filter-bar">
+      <label class="filter-chip" title="First-party requests only">
+        <input type="checkbox" id="filter-first-party" checked />
+        <span>1st party</span>
+      </label>
+      <label class="filter-chip" title="JSON responses only">
+        <input type="checkbox" id="filter-json" checked />
+        <span>JSON</span>
+      </label>
+      <div class="method-pills">
+        <button class="method-pill active" data-method="">ALL</button>
+        <button class="method-pill" data-method="GET">GET</button>
+        <button class="method-pill" data-method="POST">POST</button>
+        <button class="method-pill" data-method="PUT">PUT</button>
+        <button class="method-pill" data-method="DELETE">DEL</button>
+      </div>
+      <input id="filter-url" class="filter-input" type="text" placeholder="Filter URL…" spellcheck="false" />
+    </div>
+
+    <div id="request-list" class="request-list">
+      <div id="monitor-empty" class="sp-empty">
+        Waiting for requests…<br/>
+        <span class="sp-empty-sub">Navigate or interact with the page to capture traffic.</span>
+      </div>
+    </div>
+
+    <div class="sp-statusbar">
+      <span id="status-count">0 requests</span>
+      <span id="status-filtered"></span>
+    </div>
+
+  </div>
+
+  <!-- ── Detail view ── -->
+  <div id="view-detail" class="view hidden">
+
+    <header class="sp-header">
+      <button id="btn-back-detail" class="sp-back-btn">&#8592; Back</button>
+      <span id="detail-title" class="sp-title truncate"></span>
+    </header>
+
+    <div class="detail-body">
+
+      <section class="detail-section">
+        <div class="detail-method-row">
+          <span id="detail-method-badge" class="method-badge"></span>
+          <span id="detail-url" class="detail-url"></span>
+        </div>
+        <div id="detail-meta" class="detail-meta"></div>
+      </section>
+
+      <section class="detail-section">
+        <div class="detail-section-header collapsible" data-target="req-headers-body">
+          <span>Request Headers</span><span class="chevron">&#8964;</span>
+        </div>
+        <div id="req-headers-body" class="detail-section-body">
+          <div id="detail-req-headers" class="kv-list"></div>
+        </div>
+      </section>
+
+      <section class="detail-section">
+        <div class="detail-section-header collapsible" data-target="req-body-body">
+          <span>Request Body</span><span class="chevron">&#8964;</span>
+        </div>
+        <div id="req-body-body" class="detail-section-body">
+          <pre id="detail-req-body" class="code-block"></pre>
+        </div>
+      </section>
+
+      <section class="detail-section">
+        <div class="detail-section-header collapsible" data-target="resp-headers-body">
+          <span>Response Headers</span><span class="chevron">&#8964;</span>
+        </div>
+        <div id="resp-headers-body" class="detail-section-body">
+          <div id="detail-resp-headers" class="kv-list"></div>
+        </div>
+      </section>
+
+      <section class="detail-section">
+        <div class="detail-section-header collapsible" data-target="resp-body-body">
+          <span>Response Body</span><span class="chevron">&#8964;</span>
+        </div>
+        <div id="resp-body-body" class="detail-section-body">
+          <pre id="detail-resp-body" class="code-block"></pre>
+        </div>
+      </section>
+
+    </div>
+
+    <div class="detail-actions">
+      <button id="btn-replay" class="sp-btn sp-btn-primary">Replay</button>
+      <button id="btn-to-inspector" class="sp-btn sp-btn-secondary">Open in Inspector</button>
+    </div>
+
+  </div>
+
+  <!-- ── Replay view ── -->
+  <div id="view-replay" class="view hidden">
+
+    <header class="sp-header">
+      <button id="btn-back-replay" class="sp-back-btn">&#8592; Back</button>
+      <span class="sp-title">Replay</span>
+      <button id="btn-send" class="sp-btn sp-btn-primary sp-btn-sm">Send</button>
+    </header>
+
+    <div class="replay-body">
+
+      <section class="detail-section">
+        <div class="replay-url-row">
+          <select id="replay-method" class="replay-method-select"></select>
+          <input id="replay-url" class="replay-url-input" type="text" spellcheck="false" />
+        </div>
+      </section>
+
+      <section class="detail-section">
+        <div class="detail-section-header collapsible" data-target="replay-headers-body">
+          <span>Headers</span>
+          <div class="section-header-right">
+            <button class="sp-add-btn" data-list="replay-headers-body">+ Add</button>
+            <span class="chevron">&#8964;</span>
+          </div>
+        </div>
+        <div id="replay-headers-body" class="detail-section-body">
+          <div id="replay-headers-list" class="kv-edit-list"></div>
+        </div>
+      </section>
+
+      <section class="detail-section">
+        <div class="detail-section-header collapsible" data-target="replay-params-body">
+          <span>Query Params</span>
+          <div class="section-header-right">
+            <button class="sp-add-btn" data-list="replay-params-body">+ Add</button>
+            <span class="chevron">&#8964;</span>
+          </div>
+        </div>
+        <div id="replay-params-body" class="detail-section-body">
+          <div id="replay-params-list" class="kv-edit-list"></div>
+        </div>
+      </section>
+
+      <section class="detail-section">
+        <div class="detail-section-header collapsible" data-target="replay-body-body">
+          <span>Body</span><span class="chevron">&#8964;</span>
+        </div>
+        <div id="replay-body-body" class="detail-section-body">
+          <textarea id="replay-body" class="replay-textarea" spellcheck="false"
+                    placeholder="Request body (JSON, form data…)"></textarea>
+        </div>
+      </section>
+
+      <section class="detail-section" id="replay-response-section">
+        <div class="detail-section-header">
+          <span>Response</span>
+          <span id="replay-resp-meta" class="detail-meta"></span>
+        </div>
+        <div class="detail-section-body">
+          <pre id="replay-resp-body" class="code-block replay-response-placeholder">Fire the request to see a response.</pre>
+        </div>
+      </section>
+
+    </div>
+
+  </div>
+
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>
