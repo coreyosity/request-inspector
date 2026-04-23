@@ -593,6 +593,14 @@ input[type="text"]:focus {
   opacity: 0.4;
 }
 
+.profile-group.inactive .toggle input:checked + .toggle-track {
+  background: var(--text-dim);
+}
+
+.profile-group.inactive .toggle input:checked + .toggle-track::after {
+  transform: translateX(0);
+}
+
 /* ── Preview ───────────────────────────────────────────────── */
 .preview-section {
   display: flex;
