@@ -103,6 +103,12 @@ export class InspectorController {
     this._renderParamRows();
     this._updatePreview();
     this._saveState();
+
+    const url = this._buildUrl();
+    if (!url) return;
+    chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+      if (tab?.id) chrome.tabs.update(tab.id, { url });
+    });
   }
 
   // ── Param rows ───────────────────────────────────────────────────────────────
