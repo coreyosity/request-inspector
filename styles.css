@@ -333,9 +333,14 @@ input[type="text"]:focus {
 .profiles-list::-webkit-scrollbar-track  { background: transparent; }
 .profiles-list::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 2px; }
 
+.profile-entry {
+  display: flex;
+  flex-direction: column;
+}
+
 .profile-row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   gap: 6px;
   align-items: center;
   background: var(--bg-row);
@@ -345,7 +350,8 @@ input[type="text"]:focus {
   transition: background var(--transition);
 }
 
-.profile-row:hover { background: var(--bg-row-hover); }
+.profile-row:hover          { background: var(--bg-row-hover); }
+.profile-row.editing        { border-color: var(--accent-amber); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 
 .profile-name {
   font-size: 11px;
@@ -371,6 +377,88 @@ input[type="text"]:focus {
 }
 
 .btn-load:hover { background: rgba(61, 220, 151, 0.12); }
+
+.btn-edit {
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  background: transparent;
+  color: var(--accent-amber);
+  border: 1px solid var(--accent-amber);
+  transition: background var(--transition);
+  white-space: nowrap;
+}
+
+.btn-edit:hover { background: rgba(245, 166, 35, 0.12); }
+
+/* ── Profile edit panel ────────────────────────────────────── */
+.profile-edit-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--accent-amber);
+  border-top: none;
+  border-bottom-left-radius: var(--radius-sm);
+  border-bottom-right-radius: var(--radius-sm);
+  padding: 10px 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-edit-panel.hidden { display: none; }
+
+.edit-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.edit-panel-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.edit-name-row input { flex: 1; }
+
+.edit-panel-params-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.edit-params-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.edit-params-list::-webkit-scrollbar        { width: 4px; }
+.edit-params-list::-webkit-scrollbar-track  { background: transparent; }
+.edit-params-list::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 2px; }
+
+.edit-panel-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.btn-xs {
+  padding: 3px 8px;
+  font-size: 10px;
+}
 
 /* ── Preview ───────────────────────────────────────────────── */
 .preview-section {
