@@ -10,9 +10,27 @@
 
 'use strict';
 
-const PROFILES_KEY = 'ri_profiles';
+const PROFILES_KEY       = 'ri_profiles';
+const ENABLED_PROFILE_KEY = 'ri_enabled_profile';
 
 export class StorageService {
+
+  // ── Active profile ────────────────────────────────────────────────────────────
+
+  /** @returns {Promise<string|null>} */
+  async loadEnabledProfile() {
+    const result = await chrome.storage.local.get(ENABLED_PROFILE_KEY);
+    return result[ENABLED_PROFILE_KEY] ?? null;
+  }
+
+  /** @param {string|null} name */
+  saveEnabledProfile(name) {
+    if (name === null) {
+      chrome.storage.local.remove(ENABLED_PROFILE_KEY);
+    } else {
+      chrome.storage.local.set({ [ENABLED_PROFILE_KEY]: name });
+    }
+  }
 
   // ── Profiles ─────────────────────────────────────────────────────────────────
 

@@ -67,13 +67,33 @@ export class InspectorController {
     this._originDisplay.value = parsed.origin;
     this._pathInput.value     = parsed.pathname;
 
-    // Parse URL params fresh — no draft state.
+    // Load profiles and the persisted active profile in parallel.
+    const [profiles, storedProfile] = await Promise.all([
+      this._storage.readProfiles(),
+      this._storage.loadEnabledProfile(),
+    ]);
+
+    // Validate the stored profile still exists.
+    this._enabledProfile = (storedProfile && profiles[storedProfile]) ? storedProfile : null;
+    if (storedProfile && !this._enabledProfile) {
+      // Profile was deleted — clear the stale key.
+      this._storage.saveEnabledProfile(null);
+    }
+
+    // Keys that belong to the active profile are excluded from defaults so
+    // they don't appear twice (once as default and once in the profile group).
+    const activeProfileKeys = this._enabledProfile
+      ? new Set(profiles[this._enabledProfile].params.map(p => p.key))
+      : new Set();
+
+    // URL params that are not part of the active profile → default section.
     parsed.searchParams.forEach((value, key) => {
-      this._params.push({ id: this._nextId++, enabled: true, key, value, source: 'default' });
+      if (!activeProfileKeys.has(key)) {
+        this._params.push({ id: this._nextId++, enabled: true, key, value, source: 'default' });
+      }
     });
 
-    // Load all profiles fresh from storage.
-    const profiles = await this._storage.readProfiles();
+    // All profiles → their own groups.
     Object.entries(profiles).forEach(([name, { params }]) => {
       params.forEach(({ enabled, key, value }) => {
         this._params.push({ id: this._nextId++, enabled, key, value, source: name });
@@ -120,6 +140,7 @@ export class InspectorController {
     // Clear active profile if it was deleted or renamed.
     if (this._enabledProfile && !profiles[this._enabledProfile]) {
       this._enabledProfile = null;
+      this._storage.saveEnabledProfile(null);
       if (this._onProfileEnable) this._onProfileEnable(null);
     }
 
@@ -135,6 +156,7 @@ export class InspectorController {
    */
   enableProfile(name) {
     this._enabledProfile = name;
+    this._storage.saveEnabledProfile(name);
     if (this._onProfileEnable) this._onProfileEnable(name);
     this._renderParamRows();
     this._updatePreview();
@@ -223,6 +245,7 @@ export class InspectorController {
     if (isProfile) {
       toggleCheckbox.addEventListener('change', () => {
         this._enabledProfile = toggleCheckbox.checked ? sourceKey : null;
+        this._storage.saveEnabledProfile(this._enabledProfile);
         if (this._onProfileEnable) this._onProfileEnable(this._enabledProfile);
         this._renderParamRows();
         this._updatePreview();
