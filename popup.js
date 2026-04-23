@@ -45,6 +45,5 @@ document.querySelectorAll('.tab').forEach(tabBtn => {
 
 // ── Bootstrap ──────────────────────────────────────────────────────────────────
 
-// headers.init() runs after inspector.init() so the storage key is set and
-// the enabled profile is known before headers loads profile data.
-inspector.init().then(() => headers.init(inspector.getEnabledProfile()));
+// headers.init() runs after inspector.init() so the profiles store is ready.
+inspector.init().then(() => headers.init());

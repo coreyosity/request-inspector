@@ -64,38 +64,21 @@ export class InspectorController {
       return;
     }
 
-    this._storage.setKey(parsed.origin + parsed.pathname);
     this._originDisplay.value = parsed.origin;
+    this._pathInput.value     = parsed.pathname;
 
-    // Restore default + custom params (never profile params — those always come fresh).
-    const saved = await this._storage.loadState();
-    if (saved) {
-      this._pathInput.value = saved.path;
-      saved.params
-        .filter(p => (p.source ?? 'default') === 'default' || p.source === 'custom')
-        .forEach(({ enabled, key, value, source = 'default' }) => {
-          this._params.push({ id: this._nextId++, enabled, key, value, source });
-        });
-      this._enabledProfile = saved.enabledProfile ?? null;
-    } else {
-      this._pathInput.value = parsed.pathname;
-      parsed.searchParams.forEach((value, key) => {
-        this._params.push({ id: this._nextId++, enabled: true, key, value, source: 'default' });
-      });
-    }
+    // Parse URL params fresh — no draft state.
+    parsed.searchParams.forEach((value, key) => {
+      this._params.push({ id: this._nextId++, enabled: true, key, value, source: 'default' });
+    });
 
-    // Always load all profiles fresh from storage.
+    // Load all profiles fresh from storage.
     const profiles = await this._storage.readProfiles();
     Object.entries(profiles).forEach(([name, { params }]) => {
       params.forEach(({ enabled, key, value }) => {
         this._params.push({ id: this._nextId++, enabled, key, value, source: name });
       });
     });
-
-    // Validate: clear enabledProfile if the profile no longer exists.
-    if (this._enabledProfile && !profiles[this._enabledProfile]) {
-      this._enabledProfile = null;
-    }
 
     this._renderParamRows();
     this._updatePreview();
@@ -128,7 +111,6 @@ export class InspectorController {
     if (this._onProfileEnable) this._onProfileEnable(name);
     this._renderParamRows();
     this._updatePreview();
-    this._saveState();
 
     const url = this._buildUrl();
     if (!url) return;
@@ -217,14 +199,12 @@ export class InspectorController {
         if (this._onProfileEnable) this._onProfileEnable(this._enabledProfile);
         this._renderParamRows();
         this._updatePreview();
-        this._saveState();
       });
     } else {
       toggleCheckbox.addEventListener('change', () => {
         groupParams.forEach(p => { p.enabled = toggleCheckbox.checked; });
         this._renderParamRows();
         this._updatePreview();
-        this._saveState();
       });
     }
 
@@ -245,7 +225,6 @@ export class InspectorController {
         this._params = this._params.filter(p => p.source !== sourceKey);
         this._renderParamRows();
         this._updatePreview();
-        this._saveState();
       });
       header.append(nameEl, line, toggleLabel, removeBtn);
     }
@@ -275,7 +254,6 @@ export class InspectorController {
       row.classList.toggle('disabled', !param.enabled);
       label.title = param.enabled ? 'Disable parameter' : 'Enable parameter';
       this._updatePreview();
-      this._saveState();
     });
     const track = document.createElement('span');
     track.className = 'toggle-track';
@@ -292,7 +270,6 @@ export class InspectorController {
     keyInput.addEventListener('input', () => {
       param.key = keyInput.value;
       this._updatePreview();
-      this._saveState();
     });
 
     // Value
@@ -305,7 +282,6 @@ export class InspectorController {
     valueInput.addEventListener('input', () => {
       param.value = valueInput.value;
       this._updatePreview();
-      this._saveState();
     });
 
     // Delete
@@ -318,7 +294,6 @@ export class InspectorController {
       row.remove();
       this._paramsEmpty.style.display = this._params.length === 0 ? 'block' : 'none';
       this._updatePreview();
-      this._saveState();
     });
 
     row.append(toggleWrapper, keyInput, valueInput, deleteBtn);
@@ -382,22 +357,11 @@ export class InspectorController {
     this._urlPreview.textContent = msg;
   }
 
-  // ── Storage delegation ───────────────────────────────────────────────────────
-
-  _saveState() {
-    // Only persist default + custom params; profile params are always loaded fresh from storage.
-    const params = this._params
-      .filter(p => p.source === 'default' || p.source === 'custom')
-      .map(({ enabled, key, value, source }) => ({ enabled, key, value, source }));
-    this._storage.saveState(this._pathInput.value, params, this._enabledProfile);
-  }
-
   // ── Event wiring ─────────────────────────────────────────────────────────────
 
   _bindEvents() {
     this._pathInput.addEventListener('input', () => {
       this._updatePreview();
-      this._saveState();
     });
 
     this._addParamBtn.addEventListener('click', () => {
@@ -408,7 +372,6 @@ export class InspectorController {
       this._paramsList.appendChild(row);
       row.querySelector('.param-key').focus();
       this._updatePreview();
-      this._saveState();
     });
 
     this._applyBtn.addEventListener('click', async () => {
@@ -422,7 +385,6 @@ export class InspectorController {
     });
 
     this._resetBtn.addEventListener('click', async () => {
-      this._storage.clearState();
       if (this._onReset) await this._onReset();
       this.init();
     });

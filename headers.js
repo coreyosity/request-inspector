@@ -39,18 +39,11 @@ export class HeadersController {
    * Load manual headers from storage and all profile headers fresh.
    * @param {string|null} enabledProfile  The currently active profile (from inspector).
    */
-  async init(enabledProfile = null) {
+  async init() {
     this._headers        = [];
     this._profileHeaders = [];
     this._nextId         = 0;
-    this._enabledProfile = enabledProfile;
-
-    const saved = await this._storage.loadHeaders();
-    if (saved) {
-      saved.forEach(({ enabled, key, value }) => {
-        this._headers.push({ id: this._nextId++, enabled, key, value });
-      });
-    }
+    this._enabledProfile = null;
 
     const profiles = await this._storage.readProfiles();
     Object.entries(profiles).forEach(([name, { headers = [] }]) => {
@@ -201,7 +194,6 @@ export class HeadersController {
       header.enabled = checkbox.checked;
       row.classList.toggle('disabled', !header.enabled);
       label.title = header.enabled ? 'Disable header' : 'Enable header';
-      this._saveHeaders();
     });
     const track     = document.createElement('span');
     track.className = 'toggle-track';
@@ -217,7 +209,6 @@ export class HeadersController {
     keyInput.spellcheck  = false;
     keyInput.addEventListener('input', () => {
       header.key = keyInput.value;
-      this._saveHeaders();
     });
 
     // Value
@@ -229,7 +220,6 @@ export class HeadersController {
     valueInput.spellcheck  = false;
     valueInput.addEventListener('input', () => {
       header.value = valueInput.value;
-      this._saveHeaders();
     });
 
     // Delete
@@ -242,7 +232,6 @@ export class HeadersController {
       row.remove();
       const total = this._headers.length + this._profileHeaders.length;
       this._headersEmpty.style.display = total === 0 ? 'block' : 'none';
-      this._saveHeaders();
     });
 
     row.append(toggleWrapper, keyInput, valueInput, deleteBtn);
@@ -300,14 +289,6 @@ export class HeadersController {
     return row;
   }
 
-  // ── Storage ──────────────────────────────────────────────────────────────────
-
-  _saveHeaders() {
-    this._storage.saveHeaders(
-      this._headers.map(({ enabled, key, value }) => ({ enabled, key, value }))
-    );
-  }
-
   // ── Event wiring ─────────────────────────────────────────────────────────────
 
   _bindEvents() {
@@ -324,7 +305,6 @@ export class HeadersController {
         this._headersList.appendChild(row);
       }
       row.querySelector('.param-key').focus();
-      this._saveHeaders();
     });
   }
 }
