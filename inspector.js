@@ -134,12 +134,55 @@ export class InspectorController {
       });
 
     groups.forEach((groupParams, profileName) => {
-      const header = document.createElement('div');
-      header.className   = 'params-source-header';
-      header.textContent = profileName;
-      this._paramsList.appendChild(header);
+      this._paramsList.appendChild(this._buildGroupHeader(profileName, groupParams));
       groupParams.forEach(p => this._paramsList.appendChild(this._buildParamRow(p)));
     });
+  }
+
+  _buildGroupHeader(profileName, groupParams) {
+    const allEnabled = groupParams.every(p => p.enabled);
+
+    const header = document.createElement('div');
+    header.className = 'params-source-header';
+
+    const nameEl       = document.createElement('span');
+    nameEl.className   = 'params-source-name';
+    nameEl.textContent = profileName;
+
+    const line = document.createElement('span');
+    line.className = 'params-source-line';
+
+    // Toggle all on/off
+    const toggleLabel   = document.createElement('label');
+    toggleLabel.className = 'toggle';
+    toggleLabel.title   = allEnabled ? 'Disable all' : 'Enable all';
+    const toggleCheckbox = document.createElement('input');
+    toggleCheckbox.type    = 'checkbox';
+    toggleCheckbox.checked = allEnabled;
+    toggleCheckbox.addEventListener('change', () => {
+      groupParams.forEach(p => { p.enabled = toggleCheckbox.checked; });
+      this._renderParamRows();
+      this._updatePreview();
+      this._saveState();
+    });
+    const toggleTrack   = document.createElement('span');
+    toggleTrack.className = 'toggle-track';
+    toggleLabel.append(toggleCheckbox, toggleTrack);
+
+    // Remove entire group
+    const removeBtn       = document.createElement('button');
+    removeBtn.className   = 'btn-delete';
+    removeBtn.title       = `Remove "${profileName}" params`;
+    removeBtn.textContent = '×';
+    removeBtn.addEventListener('click', () => {
+      this._params = this._params.filter(p => p.source !== profileName);
+      this._renderParamRows();
+      this._updatePreview();
+      this._saveState();
+    });
+
+    header.append(nameEl, line, toggleLabel, removeBtn);
+    return header;
   }
 
   _buildParamRow(param) {

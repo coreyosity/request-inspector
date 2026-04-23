@@ -268,7 +268,7 @@ input[type="text"]:focus {
 .params-source-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-top: 4px;
   font-size: 10px;
   font-weight: 600;
@@ -277,8 +277,9 @@ input[type="text"]:focus {
   color: var(--accent-amber);
 }
 
-.params-source-header::after {
-  content: '';
+.params-source-name { white-space: nowrap; }
+
+.params-source-line {
   flex: 1;
   height: 1px;
   background: var(--accent-amber);
