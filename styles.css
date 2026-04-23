@@ -263,7 +263,8 @@ input[type="text"]:focus {
 .param-row:hover { background: var(--bg-row-hover); }
 
 .param-row.source-default { border-left: 2px solid transparent; }
-.param-row.source-profile  { border-left: 2px solid var(--accent-amber); }
+.param-row.source-custom   { border-left: 2px solid var(--accent-amber); }
+.param-row.source-profile  { border-left: 2px solid var(--accent-green); }
 
 .params-source-header {
   display: flex;
@@ -282,9 +283,14 @@ input[type="text"]:focus {
 .params-source-line {
   flex: 1;
   height: 1px;
-  background: var(--accent-amber);
   opacity: 0.25;
 }
+
+/* Colour variants */
+.params-source-header.source-custom  { color: var(--accent-amber); }
+.params-source-header.source-custom  .params-source-line { background: var(--accent-amber); }
+.params-source-header.source-profile { color: var(--accent-green); }
+.params-source-header.source-profile .params-source-line { background: var(--accent-green); }
 
 .param-row.disabled {
   opacity: 0.4;

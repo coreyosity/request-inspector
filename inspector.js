@@ -119,44 +119,57 @@ export class InspectorController {
     this._paramsList.querySelectorAll('.param-row, .params-source-header').forEach(el => el.remove());
     this._paramsEmpty.style.display = this._params.length === 0 ? 'block' : 'none';
 
-    // Default params render first, ungrouped
+    // 1. URL params — no header
     this._params
       .filter(p => p.source === 'default')
       .forEach(p => this._paramsList.appendChild(this._buildParamRow(p)));
 
-    // Profile params grouped by profile name, each with a section header
+    // 2. Manually added params — "Custom Params" header
+    const customParams = this._params.filter(p => p.source === 'custom');
+    if (customParams.length > 0) {
+      this._paramsList.appendChild(this._buildGroupHeader('Custom Params', 'custom', customParams, 'custom'));
+      customParams.forEach(p => this._paramsList.appendChild(this._buildParamRow(p)));
+    }
+
+    // 3. Profile params — grouped by profile name
     const groups = new Map();
     this._params
-      .filter(p => p.source !== 'default')
+      .filter(p => p.source !== 'default' && p.source !== 'custom')
       .forEach(p => {
         if (!groups.has(p.source)) groups.set(p.source, []);
         groups.get(p.source).push(p);
       });
 
     groups.forEach((groupParams, profileName) => {
-      this._paramsList.appendChild(this._buildGroupHeader(profileName, groupParams));
+      this._paramsList.appendChild(this._buildGroupHeader(profileName, profileName, groupParams, 'profile'));
       groupParams.forEach(p => this._paramsList.appendChild(this._buildParamRow(p)));
     });
   }
 
-  _buildGroupHeader(profileName, groupParams) {
+  /**
+   * @param {string} displayName  Label shown in the header
+   * @param {string} sourceKey    Value of param.source to filter on remove
+   * @param {Array}  groupParams  The params in this group
+   * @param {'custom'|'profile'} type  Controls colour variant
+   */
+  _buildGroupHeader(displayName, sourceKey, groupParams, type) {
     const allEnabled = groupParams.every(p => p.enabled);
 
     const header = document.createElement('div');
-    header.className = 'params-source-header';
+    header.className = `params-source-header source-${type}`;
 
     const nameEl       = document.createElement('span');
     nameEl.className   = 'params-source-name';
-    nameEl.textContent = profileName;
+    nameEl.textContent = displayName;
 
     const line = document.createElement('span');
     line.className = 'params-source-line';
 
     // Toggle all on/off
-    const toggleLabel   = document.createElement('label');
+    const toggleLabel     = document.createElement('label');
     toggleLabel.className = 'toggle';
-    toggleLabel.title   = allEnabled ? 'Disable all' : 'Enable all';
-    const toggleCheckbox = document.createElement('input');
+    toggleLabel.title     = allEnabled ? 'Disable all' : 'Enable all';
+    const toggleCheckbox  = document.createElement('input');
     toggleCheckbox.type    = 'checkbox';
     toggleCheckbox.checked = allEnabled;
     toggleCheckbox.addEventListener('change', () => {
@@ -165,17 +178,17 @@ export class InspectorController {
       this._updatePreview();
       this._saveState();
     });
-    const toggleTrack   = document.createElement('span');
+    const toggleTrack     = document.createElement('span');
     toggleTrack.className = 'toggle-track';
     toggleLabel.append(toggleCheckbox, toggleTrack);
 
     // Remove entire group
     const removeBtn       = document.createElement('button');
     removeBtn.className   = 'btn-delete';
-    removeBtn.title       = `Remove "${profileName}" params`;
+    removeBtn.title       = `Remove "${displayName}"`;
     removeBtn.textContent = '×';
     removeBtn.addEventListener('click', () => {
-      this._params = this._params.filter(p => p.source !== profileName);
+      this._params = this._params.filter(p => p.source !== sourceKey);
       this._renderParamRows();
       this._updatePreview();
       this._saveState();
@@ -187,7 +200,9 @@ export class InspectorController {
 
   _buildParamRow(param) {
     const row = document.createElement('div');
-    const sourceClass = (param.source === 'default') ? 'source-default' : 'source-profile';
+    const sourceClass = param.source === 'default' ? 'source-default'
+                      : param.source === 'custom'  ? 'source-custom'
+                      : 'source-profile';
     row.className  = `param-row ${sourceClass}` + (param.enabled ? '' : ' disabled');
     row.dataset.id = param.id;
 
@@ -323,7 +338,7 @@ export class InspectorController {
     });
 
     this._addParamBtn.addEventListener('click', () => {
-      const param = { id: this._nextId++, enabled: true, key: '', value: '', source: 'default' };
+      const param = { id: this._nextId++, enabled: true, key: '', value: '', source: 'custom' };
       this._params.push(param);
       this._paramsEmpty.style.display = 'none';
       const row = this._buildParamRow(param);
