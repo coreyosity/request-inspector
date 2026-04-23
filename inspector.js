@@ -11,9 +11,15 @@
 'use strict';
 
 export class InspectorController {
-  /** @param {import('./storage.js').StorageService} storage */
-  constructor(storage) {
-    this._storage = storage;
+  /**
+   * @param {import('./storage.js').StorageService} storage
+   * @param {{ onApply?: (tabId: number, url: string) => Promise<void>,
+   *            onReset?: () => Promise<void> }} [callbacks]
+   */
+  constructor(storage, { onApply, onReset } = {}) {
+    this._storage  = storage;
+    this._onApply  = onApply ?? null;
+    this._onReset  = onReset ?? null;
 
     /** @type {{ id: number, enabled: boolean, key: string, value: string }[]} */
     this._params    = [];
@@ -108,8 +114,10 @@ export class InspectorController {
 
     const url = this._buildUrl();
     if (!url) return;
-    chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
-      if (tab?.id) chrome.tabs.update(tab.id, { url });
+    chrome.tabs.query({ active: true, currentWindow: true }).then(async ([tab]) => {
+      if (!tab?.id) return;
+      if (this._onApply) await this._onApply(tab.id, url);
+      chrome.tabs.update(tab.id, { url });
     });
   }
 
@@ -353,13 +361,29 @@ export class InspectorController {
       if (!url) return;
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tab?.id) return;
+      if (this._onApply) await this._onApply(tab.id, url);
       await chrome.tabs.update(tab.id, { url });
       window.close();
     });
 
-    this._resetBtn.addEventListener('click', () => {
+    this._resetBtn.addEventListener('click', async () => {
       this._storage.clearState();
+      if (this._onReset) await this._onReset();
       this.init();
+    });
+
+    // Sub-tab switching
+    document.querySelectorAll('.subtab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.subtab').forEach(t => {
+          t.classList.remove('active');
+          t.setAttribute('aria-selected', 'false');
+        });
+        document.querySelectorAll('.subtab-panel').forEach(p => p.classList.add('hidden'));
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+        document.getElementById(`subtab-${btn.dataset.subtab}`).classList.remove('hidden');
+      });
     });
   }
 }

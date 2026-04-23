@@ -214,6 +214,40 @@ input[type="text"]:focus {
   padding-top: 8px;
 }
 
+/* ── Sub-tabs ──────────────────────────────────────────────── */
+.subtabs {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.subtab {
+  flex: 1;
+  padding: 5px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--transition), border-color var(--transition);
+  margin-bottom: -1px;
+}
+
+.subtab:hover  { color: var(--text); }
+
+.subtab.active {
+  color: var(--accent-cyan);
+  border-bottom-color: var(--accent-cyan);
+}
+
+.subtab-panel { display: flex; flex-direction: column; }
+.subtab-panel.hidden { display: none; }
+
 /* ── Params section ────────────────────────────────────────── */
 .params-section {
   display: flex;

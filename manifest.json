@@ -5,10 +5,12 @@
   "description": "Inspect, toggle, and modify the current tab's URL path and query parameters.",
   "permissions": [
     "activeTab",
+    "declarativeNetRequest",
     "scripting",
     "storage",
     "tabs"
   ],
+  "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup.html",
     "default_title": "Request Inspector"

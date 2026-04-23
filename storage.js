@@ -74,4 +74,19 @@ export class StorageService {
     delete profiles[name];
     chrome.storage.local.set({ [PROFILES_KEY]: profiles });
   }
+
+  // ── Headers ──────────────────────────────────────────────────────────────────
+
+  /** @param {{ enabled: boolean, key: string, value: string }[]} headers */
+  saveHeaders(headers) {
+    if (!this._key) return;
+    chrome.storage.local.set({ [`${this._key}__h`]: headers });
+  }
+
+  /** @returns {Promise<{ enabled: boolean, key: string, value: string }[] | null>} */
+  async loadHeaders() {
+    if (!this._key) return null;
+    const result = await chrome.storage.local.get(`${this._key}__h`);
+    return result[`${this._key}__h`] ?? null;
+  }
 }

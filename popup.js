@@ -4,22 +4,26 @@
  * See LICENSE file for full text.
  *
  * popup.js — Entry point
- * Instantiates StorageService, InspectorController, and ProfilesController,
- * then wires up tab switching.
+ * Instantiates all controllers, wires callbacks, and handles main tab switching.
  */
 
 import { StorageService }      from './storage.js';
 import { InspectorController } from './inspector.js';
+import { HeadersController }   from './headers.js';
 import { ProfilesController }  from './profiles.js';
 
 const storage   = new StorageService();
-const inspector = new InspectorController(storage);
+const headers   = new HeadersController(storage);
+const inspector = new InspectorController(storage, {
+  onApply: async (_tabId, url) => headers.applyHeaders(url),
+  onReset: async ()            => headers.clearRules(),
+});
 const profiles  = new ProfilesController(storage, {
-  getParams:   ()  => inspector.getParams(),
-  applyParams: (name, p) => inspector.applyParams(name, p),
+  getParams:   ()         => inspector.getParams(),
+  applyParams: (name, p)  => inspector.applyParams(name, p),
 });
 
-// ── Tab switching ──────────────────────────────────────────────────────────────
+// ── Main tab switching ─────────────────────────────────────────────────────────
 
 document.querySelectorAll('.tab').forEach(tabBtn => {
   tabBtn.addEventListener('click', () => {
@@ -39,4 +43,5 @@ document.querySelectorAll('.tab').forEach(tabBtn => {
 
 // ── Bootstrap ──────────────────────────────────────────────────────────────────
 
-inspector.init();
+// headers.init() runs after inspector.init() so the storage key is already set.
+inspector.init().then(() => headers.init());

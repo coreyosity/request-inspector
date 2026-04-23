@@ -46,18 +46,39 @@
                  placeholder="/some/path" spellcheck="false" />
         </section>
 
-        <!-- Query parameters -->
-        <section class="params-section">
-          <div class="params-header">
-            <span class="params-title">Query Parameters</span>
-            <button id="add-param-btn" class="btn btn-secondary" title="Add parameter">
-              + Add
-            </button>
-          </div>
-          <div id="params-list" class="params-list">
-            <div class="params-empty" id="params-empty">No query parameters</div>
-          </div>
-        </section>
+        <!-- Sub-tabs -->
+        <nav class="subtabs" role="tablist">
+          <button class="subtab active" data-subtab="params" role="tab"
+                  aria-selected="true">Query Params</button>
+          <button class="subtab" data-subtab="headers" role="tab"
+                  aria-selected="false">Headers</button>
+        </nav>
+
+        <!-- Query Params panel -->
+        <div id="subtab-params" class="subtab-panel">
+          <section class="params-section">
+            <div class="params-header">
+              <span class="params-title">Query Parameters</span>
+              <button id="add-param-btn" class="btn btn-secondary">+ Add</button>
+            </div>
+            <div id="params-list" class="params-list">
+              <div class="params-empty" id="params-empty">No query parameters</div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Headers panel -->
+        <div id="subtab-headers" class="subtab-panel hidden">
+          <section class="params-section">
+            <div class="params-header">
+              <span class="params-title">Request Headers</span>
+              <button id="add-header-btn" class="btn btn-secondary">+ Add</button>
+            </div>
+            <div id="headers-list" class="params-list">
+              <div class="params-empty" id="headers-empty">No headers</div>
+            </div>
+          </section>
+        </div>
 
       </div><!-- /inspector-left -->
 
