@@ -19,61 +19,84 @@
       <h1>Request Inspector</h1>
     </header>
 
-    <!-- Origin (read-only) -->
-    <section class="field-group">
-      <label for="origin-display">Origin</label>
-      <input id="origin-display" type="text" class="input-readonly" readonly
-             placeholder="https://example.com" />
-    </section>
+    <!-- Tab bar -->
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="inspector" role="tab"
+              aria-selected="true" aria-controls="tab-inspector">Inspector</button>
+      <button class="tab" data-tab="profiles" role="tab"
+              aria-selected="false" aria-controls="tab-profiles">Profiles</button>
+    </nav>
 
-    <!-- Path editor -->
-    <section class="field-group">
-      <label for="path-input">Path</label>
-      <input id="path-input" type="text" class="input-editable"
-             placeholder="/some/path" spellcheck="false" />
-    </section>
+    <!-- ── Inspector tab ── -->
+    <div id="tab-inspector" class="tab-panel" role="tabpanel">
 
-    <!-- Query parameters -->
-    <section class="params-section">
-      <div class="params-header">
-        <span class="params-title">Query Parameters</span>
-        <button id="add-param-btn" class="btn btn-secondary" title="Add parameter">
-          + Add Parameter
-        </button>
+      <!-- Origin (read-only) -->
+      <section class="field-group">
+        <label for="origin-display">Origin</label>
+        <input id="origin-display" type="text" class="input-readonly" readonly
+               placeholder="https://example.com" />
+      </section>
+
+      <!-- Path editor -->
+      <section class="field-group">
+        <label for="path-input">Path</label>
+        <input id="path-input" type="text" class="input-editable"
+               placeholder="/some/path" spellcheck="false" />
+      </section>
+
+      <!-- Query parameters -->
+      <section class="params-section">
+        <div class="params-header">
+          <span class="params-title">Query Parameters</span>
+          <button id="add-param-btn" class="btn btn-secondary" title="Add parameter">
+            + Add Parameter
+          </button>
+        </div>
+        <div id="params-list" class="params-list">
+          <div class="params-empty" id="params-empty">No query parameters</div>
+        </div>
+      </section>
+
+      <!-- Live preview -->
+      <section class="preview-section">
+        <label>New URL</label>
+        <div id="url-preview" class="url-preview">—</div>
+      </section>
+
+      <!-- Actions -->
+      <div class="actions">
+        <button id="reset-btn" class="btn btn-ghost">Reset</button>
+        <button id="apply-btn" class="btn btn-primary">Apply &amp; Reload</button>
       </div>
 
-      <div id="params-list" class="params-list">
-        <!-- rows injected by popup.js -->
-        <div class="params-empty" id="params-empty">No query parameters</div>
-      </div>
-    </section>
+    </div><!-- /tab-inspector -->
 
-    <!-- Profiles -->
-    <section class="profiles-section">
-      <div class="params-header">
-        <span class="params-title">Profiles</span>
-      </div>
-      <div class="profile-save-row">
-        <input id="profile-name-input" type="text" class="input-editable"
-               placeholder="Profile name…" spellcheck="false" />
-        <button id="save-profile-btn" class="btn btn-secondary">Save</button>
-      </div>
-      <div id="profiles-list" class="profiles-list">
-        <div class="params-empty" id="profiles-empty">No saved profiles</div>
-      </div>
-    </section>
+    <!-- ── Profiles tab ── -->
+    <div id="tab-profiles" class="tab-panel hidden" role="tabpanel">
 
-    <!-- Live preview -->
-    <section class="preview-section">
-      <label>New URL</label>
-      <div id="url-preview" class="url-preview">—</div>
-    </section>
+      <!-- Save current params as a new profile -->
+      <section class="profiles-section">
+        <div class="params-header">
+          <span class="params-title">Save Current Params</span>
+        </div>
+        <div class="profile-save-row">
+          <input id="profile-name-input" type="text" class="input-editable"
+                 placeholder="Profile name…" spellcheck="false" />
+          <button id="save-profile-btn" class="btn btn-secondary">Save</button>
+        </div>
+      </section>
 
-    <!-- Actions -->
-    <div class="actions">
-      <button id="reset-btn" class="btn btn-ghost">Reset</button>
-      <button id="apply-btn" class="btn btn-primary">Apply &amp; Reload</button>
-    </div>
+      <!-- Saved profiles list -->
+      <section class="profiles-section">
+        <div class="params-header">
+          <span class="params-title">Saved Profiles</span>
+        </div>
+        <div id="profiles-list" class="profiles-list">
+          <div class="params-empty" id="profiles-empty">No saved profiles</div>
+        </div>
+      </section>
+
+    </div><!-- /tab-profiles -->
 
   </div>
   <script src="popup.js"></script>

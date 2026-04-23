@@ -187,7 +187,6 @@ async function init() {
   }
 
   renderParamRows();
-  renderProfileList();
   updatePreview();
 }
 
@@ -394,6 +393,25 @@ saveProfileBtn.addEventListener('click', async () => {
 // Allow pressing Enter in the name input to save
 profileNameInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') saveProfileBtn.click();
+});
+
+// ── Tab switching ──────────────────────────────────────────────────────────────
+
+document.querySelectorAll('.tab').forEach(tabBtn => {
+  tabBtn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => {
+      t.classList.remove('active');
+      t.setAttribute('aria-selected', 'false');
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+
+    tabBtn.classList.add('active');
+    tabBtn.setAttribute('aria-selected', 'true');
+    document.getElementById(`tab-${tabBtn.dataset.tab}`).classList.remove('hidden');
+
+    // Refresh profile list whenever the profiles tab is opened
+    if (tabBtn.dataset.tab === 'profiles') renderProfileList();
+  });
 });
 
 // ── Bootstrap ──────────────────────────────────────────────────────────────────
