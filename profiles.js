@@ -15,10 +15,10 @@ export class ProfilesController {
    * @param {import('./storage.js').StorageService} storage
    * @param {{ getParams: () => Array, loadParams: (params: Array) => void }} inspector
    */
-  constructor(storage, { getParams, loadParams }) {
-    this._storage    = storage;
-    this._getParams  = getParams;
-    this._loadParams = loadParams;
+  constructor(storage, { getParams, applyParams }) {
+    this._storage      = storage;
+    this._getParams    = getParams;
+    this._applyParams  = applyParams;
 
     /** @type {HTMLElement | null} Currently open edit panel. */
     this._activeEditPanel = null;
@@ -95,9 +95,9 @@ export class ProfilesController {
     });
 
     const loadBtn       = document.createElement('button');
-    loadBtn.className   = 'btn-load';
-    loadBtn.textContent = 'Load';
-    loadBtn.addEventListener('click', () => this._loadParams(params));
+    loadBtn.className   = 'btn-apply';
+    loadBtn.textContent = 'Apply';
+    loadBtn.addEventListener('click', () => this._applyParams(params));
 
     const deleteBtn       = document.createElement('button');
     deleteBtn.className   = 'btn-delete';

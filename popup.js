@@ -15,8 +15,8 @@ import { ProfilesController }  from './profiles.js';
 const storage   = new StorageService();
 const inspector = new InspectorController(storage);
 const profiles  = new ProfilesController(storage, {
-  getParams:  ()  => inspector.getParams(),
-  loadParams: (p) => inspector.loadParams(p),
+  getParams:   ()  => inspector.getParams(),
+  applyParams: (p) => inspector.applyParams(p),
 });
 
 // ── Tab switching ──────────────────────────────────────────────────────────────

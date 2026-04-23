@@ -84,12 +84,22 @@ export class InspectorController {
   }
 
   /**
-   * Replace the current params with a loaded profile and re-render.
-   * Called by ProfilesController when the user clicks Load.
+   * Merge a profile's params into the current state.
+   * Existing keys are overridden; new keys are appended.
+   * Params already present but absent from the profile are left untouched.
+   * Called by ProfilesController when the user clicks Apply.
    * @param {{ enabled: boolean, key: string, value: string }[]} serialized
    */
-  loadParams(serialized) {
-    this._params = serialized.map(p => ({ id: this._nextId++, ...p }));
+  applyParams(serialized) {
+    serialized.forEach(({ key, value, enabled }) => {
+      const existing = this._params.find(p => p.key === key);
+      if (existing) {
+        existing.value   = value;
+        existing.enabled = enabled;
+      } else {
+        this._params.push({ id: this._nextId++, key, value, enabled });
+      }
+    });
     this._renderParamRows();
     this._updatePreview();
     this._saveState();

@@ -361,7 +361,7 @@ input[type="text"]:focus {
   white-space: nowrap;
 }
 
-.btn-load {
+.btn-apply {
   padding: 3px 8px;
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
@@ -376,7 +376,7 @@ input[type="text"]:focus {
   white-space: nowrap;
 }
 
-.btn-load:hover { background: rgba(61, 220, 151, 0.12); }
+.btn-apply:hover { background: rgba(61, 220, 151, 0.12); }
 
 .btn-edit {
   padding: 3px 8px;
