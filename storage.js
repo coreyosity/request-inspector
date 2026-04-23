@@ -27,17 +27,18 @@ export class StorageService {
   /**
    * Persist the current working state for this page.
    * @param {string} path
-   * @param {{ enabled: boolean, key: string, value: string }[]} params
+   * @param {{ enabled: boolean, key: string, value: string, source: string }[]} params
+   * @param {string|null} enabledProfile  Name of the currently active profile, or null.
    */
-  saveState(path, params) {
+  saveState(path, params, enabledProfile = null) {
     if (!this._key) return;
     chrome.storage.local.set({
-      [this._key]: { path, params },
+      [this._key]: { path, params, enabledProfile },
     });
   }
 
   /**
-   * @returns {Promise<{ path: string, params: Array } | null>}
+   * @returns {Promise<{ path: string, params: Array, enabledProfile: string|null } | null>}
    */
   async loadState() {
     if (!this._key) return null;

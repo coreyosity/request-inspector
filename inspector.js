@@ -21,10 +21,12 @@ export class InspectorController {
     this._onApply  = onApply ?? null;
     this._onReset  = onReset ?? null;
 
-    /** @type {{ id: number, enabled: boolean, key: string, value: string }[]} */
-    this._params    = [];
-    this._nextId    = 0;
-    this._originUrl = '';
+    /** @type {{ id: number, enabled: boolean, key: string, value: string, source: string }[]} */
+    this._params         = [];
+    this._nextId         = 0;
+    this._originUrl      = '';
+    /** @type {string|null} Name of the currently active profile, or null. */
+    this._enabledProfile = null;
 
     // DOM refs
     this._originDisplay = document.getElementById('origin-display');
@@ -42,8 +44,9 @@ export class InspectorController {
   // ── Public API ───────────────────────────────────────────────────────────────
 
   async init() {
-    this._params = [];
-    this._nextId = 0;
+    this._params         = [];
+    this._nextId         = 0;
+    this._enabledProfile = null;
 
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.url) {
@@ -63,12 +66,16 @@ export class InspectorController {
     this._storage.setKey(parsed.origin + parsed.pathname);
     this._originDisplay.value = parsed.origin;
 
+    // Restore default + custom params (never profile params — those always come fresh).
     const saved = await this._storage.loadState();
     if (saved) {
       this._pathInput.value = saved.path;
-      saved.params.forEach(({ enabled, key, value, source = 'default' }) => {
-        this._params.push({ id: this._nextId++, enabled, key, value, source });
-      });
+      saved.params
+        .filter(p => (p.source ?? 'default') === 'default' || p.source === 'custom')
+        .forEach(({ enabled, key, value, source = 'default' }) => {
+          this._params.push({ id: this._nextId++, enabled, key, value, source });
+        });
+      this._enabledProfile = saved.enabledProfile ?? null;
     } else {
       this._pathInput.value = parsed.pathname;
       parsed.searchParams.forEach((value, key) => {
@@ -76,38 +83,42 @@ export class InspectorController {
       });
     }
 
+    // Always load all profiles fresh from storage.
+    const profiles = await this._storage.readProfiles();
+    Object.entries(profiles).forEach(([name, { params }]) => {
+      params.forEach(({ enabled, key, value }) => {
+        this._params.push({ id: this._nextId++, enabled, key, value, source: name });
+      });
+    });
+
+    // Validate: clear enabledProfile if the profile no longer exists.
+    if (this._enabledProfile && !profiles[this._enabledProfile]) {
+      this._enabledProfile = null;
+    }
+
     this._renderParamRows();
     this._updatePreview();
   }
 
   /**
-   * Return a serialised (id-free) snapshot of the current params.
-   * Used by ProfilesController when saving a profile.
+   * Return a serialised (id-free) snapshot of default + custom params only.
+   * Used by ProfilesController when saving a profile snapshot.
    * @returns {{ enabled: boolean, key: string, value: string }[]}
    */
   getParams() {
-    return this._params.map(({ enabled, key, value }) => ({ enabled, key, value }));
+    return this._params
+      .filter(p => p.source === 'default' || p.source === 'custom')
+      .map(({ enabled, key, value }) => ({ enabled, key, value }));
   }
 
   /**
-   * Merge a profile's params into the current state.
-   * Existing keys are overridden; new keys are appended.
-   * Params already present but absent from the profile are left untouched.
+   * Enable a profile by name (radio behaviour — disables all others).
+   * Re-renders, updates the preview, saves state, and navigates the tab.
    * Called by ProfilesController when the user clicks Apply.
-   * @param {string} profileName
-   * @param {{ enabled: boolean, key: string, value: string }[]} serialized
+   * @param {string} name
    */
-  applyParams(profileName, serialized) {
-    serialized.forEach(({ key, value, enabled }) => {
-      const existing = this._params.find(p => p.key === key);
-      if (existing) {
-        existing.value   = value;
-        existing.enabled = enabled;
-        existing.source  = profileName;
-      } else {
-        this._params.push({ id: this._nextId++, key, value, enabled, source: profileName });
-      }
-    });
+  enableProfile(name) {
+    this._enabledProfile = name;
     this._renderParamRows();
     this._updatePreview();
     this._saveState();
@@ -124,8 +135,11 @@ export class InspectorController {
   // ── Param rows ───────────────────────────────────────────────────────────────
 
   _renderParamRows() {
-    this._paramsList.querySelectorAll('.param-row, .params-source-header').forEach(el => el.remove());
-    this._paramsEmpty.style.display = this._params.length === 0 ? 'block' : 'none';
+    this._paramsList.querySelectorAll('.param-row, .params-source-header, .profile-group').forEach(el => el.remove());
+
+    const nonProfileCount = this._params.filter(p => p.source === 'default' || p.source === 'custom').length;
+    const profileCount    = this._params.filter(p => p.source !== 'default' && p.source !== 'custom').length;
+    this._paramsEmpty.style.display = (nonProfileCount + profileCount) === 0 ? 'block' : 'none';
 
     // 1. URL params — no header
     this._params
@@ -139,7 +153,7 @@ export class InspectorController {
       customParams.forEach(p => this._paramsList.appendChild(this._buildParamRow(p)));
     }
 
-    // 3. Profile params — grouped by profile name
+    // 3. Profile params — each profile wrapped in .profile-group; only the enabled one is active
     const groups = new Map();
     this._params
       .filter(p => p.source !== 'default' && p.source !== 'custom')
@@ -149,8 +163,12 @@ export class InspectorController {
       });
 
     groups.forEach((groupParams, profileName) => {
-      this._paramsList.appendChild(this._buildGroupHeader(profileName, profileName, groupParams, 'profile'));
-      groupParams.forEach(p => this._paramsList.appendChild(this._buildParamRow(p)));
+      const isActive = profileName === this._enabledProfile;
+      const wrapper  = document.createElement('div');
+      wrapper.className = 'profile-group' + (isActive ? '' : ' inactive');
+      wrapper.appendChild(this._buildGroupHeader(profileName, profileName, groupParams, 'profile'));
+      groupParams.forEach(p => wrapper.appendChild(this._buildParamRow(p)));
+      this._paramsList.appendChild(wrapper);
     });
   }
 
@@ -158,10 +176,13 @@ export class InspectorController {
    * @param {string} displayName  Label shown in the header
    * @param {string} sourceKey    Value of param.source to filter on remove
    * @param {Array}  groupParams  The params in this group
-   * @param {'custom'|'profile'} type  Controls colour variant
+   * @param {'custom'|'profile'} type  Controls colour variant and toggle behaviour
    */
   _buildGroupHeader(displayName, sourceKey, groupParams, type) {
-    const allEnabled = groupParams.every(p => p.enabled);
+    const isProfile  = type === 'profile';
+    const isEnabled  = isProfile
+      ? this._enabledProfile === sourceKey
+      : groupParams.every(p => p.enabled);
 
     const header = document.createElement('div');
     header.className = `params-source-header source-${type}`;
@@ -173,36 +194,54 @@ export class InspectorController {
     const line = document.createElement('span');
     line.className = 'params-source-line';
 
-    // Toggle all on/off
+    // Toggle: radio-style for profiles, toggle-all for custom
     const toggleLabel     = document.createElement('label');
     toggleLabel.className = 'toggle';
-    toggleLabel.title     = allEnabled ? 'Disable all' : 'Enable all';
+    toggleLabel.title     = isEnabled
+      ? (isProfile ? 'Disable profile' : 'Disable all')
+      : (isProfile ? 'Enable profile'  : 'Enable all');
     const toggleCheckbox  = document.createElement('input');
     toggleCheckbox.type    = 'checkbox';
-    toggleCheckbox.checked = allEnabled;
-    toggleCheckbox.addEventListener('change', () => {
-      groupParams.forEach(p => { p.enabled = toggleCheckbox.checked; });
-      this._renderParamRows();
-      this._updatePreview();
-      this._saveState();
-    });
+    toggleCheckbox.checked = isEnabled;
+
+    if (isProfile) {
+      toggleCheckbox.addEventListener('change', () => {
+        this._enabledProfile = toggleCheckbox.checked ? sourceKey : null;
+        this._renderParamRows();
+        this._updatePreview();
+        this._saveState();
+      });
+    } else {
+      toggleCheckbox.addEventListener('change', () => {
+        groupParams.forEach(p => { p.enabled = toggleCheckbox.checked; });
+        this._renderParamRows();
+        this._updatePreview();
+        this._saveState();
+      });
+    }
+
     const toggleTrack     = document.createElement('span');
     toggleTrack.className = 'toggle-track';
     toggleLabel.append(toggleCheckbox, toggleTrack);
 
-    // Remove entire group
-    const removeBtn       = document.createElement('button');
-    removeBtn.className   = 'btn-delete';
-    removeBtn.title       = `Remove "${displayName}"`;
-    removeBtn.textContent = '×';
-    removeBtn.addEventListener('click', () => {
-      this._params = this._params.filter(p => p.source !== sourceKey);
-      this._renderParamRows();
-      this._updatePreview();
-      this._saveState();
-    });
+    if (isProfile) {
+      // Profiles are managed in the Profiles tab — no remove button here
+      header.append(nameEl, line, toggleLabel);
+    } else {
+      // Custom group can be removed from the inspector
+      const removeBtn       = document.createElement('button');
+      removeBtn.className   = 'btn-delete';
+      removeBtn.title       = `Remove "${displayName}"`;
+      removeBtn.textContent = '×';
+      removeBtn.addEventListener('click', () => {
+        this._params = this._params.filter(p => p.source !== sourceKey);
+        this._renderParamRows();
+        this._updatePreview();
+        this._saveState();
+      });
+      header.append(nameEl, line, toggleLabel, removeBtn);
+    }
 
-    header.append(nameEl, line, toggleLabel, removeBtn);
     return header;
   }
 
@@ -289,7 +328,12 @@ export class InspectorController {
     }
 
     const path    = this._pathInput.value || '/';
-    const enabled = this._params.filter(p => p.enabled && p.key.trim() !== '');
+    const enabled = this._params.filter(p => {
+      if (!p.enabled || p.key.trim() === '') return false;
+      if (p.source === 'default' || p.source === 'custom') return true;
+      // Profile params only contribute if this profile is currently active
+      return p.source === this._enabledProfile;
+    });
     const search  = enabled.length
       ? '?' + enabled.map(p =>
           encodeURIComponent(p.key) + (p.value !== '' ? '=' + encodeURIComponent(p.value) : '')
@@ -333,8 +377,11 @@ export class InspectorController {
   // ── Storage delegation ───────────────────────────────────────────────────────
 
   _saveState() {
-    const params = this._params.map(({ enabled, key, value, source }) => ({ enabled, key, value, source }));
-    this._storage.saveState(this._pathInput.value, params);
+    // Only persist default + custom params; profile params are always loaded fresh from storage.
+    const params = this._params
+      .filter(p => p.source === 'default' || p.source === 'custom')
+      .map(({ enabled, key, value, source }) => ({ enabled, key, value, source }));
+    this._storage.saveState(this._pathInput.value, params, this._enabledProfile);
   }
 
   // ── Event wiring ─────────────────────────────────────────────────────────────

@@ -581,6 +581,18 @@ input[type="text"]:focus {
   font-size: 10px;
 }
 
+/* ── Profile groups in the inspector ──────────────────────── */
+.profile-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: opacity var(--transition);
+}
+
+.profile-group.inactive {
+  opacity: 0.4;
+}
+
 /* ── Preview ───────────────────────────────────────────────── */
 .preview-section {
   display: flex;

@@ -19,8 +19,8 @@ const inspector = new InspectorController(storage, {
   onReset: async ()            => headers.clearRules(),
 });
 const profiles  = new ProfilesController(storage, {
-  getParams:   ()         => inspector.getParams(),
-  applyParams: (name, p)  => inspector.applyParams(name, p),
+  getParams:     ()     => inspector.getParams(),
+  enableProfile: (name) => inspector.enableProfile(name),
 });
 
 // ── Main tab switching ─────────────────────────────────────────────────────────
