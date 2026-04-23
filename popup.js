@@ -7,9 +7,11 @@
  * Handles URL parsing, query-parameter table management, live preview,
  * and navigation via chrome.tabs.update.
  *
- * State is persisted to chrome.storage.local, keyed by origin + pathname
- * (i.e. the URL before query parameters), so unapplied edits survive
- * between popup opens on the same page.
+ * Working state is persisted to chrome.storage.local, keyed by
+ * origin + pathname, so unapplied edits survive between popup opens.
+ *
+ * Profiles are named snapshots of query parameters stored globally
+ * under the key "ri_profiles" and can be loaded onto any page.
  */
 
 'use strict';
@@ -24,14 +26,18 @@ let storageKey  = '';   // origin + pathname — used as the chrome.storage.loca
 
 // ── DOM refs ───────────────────────────────────────────────────────────────────
 
-const originDisplay = document.getElementById('origin-display');
-const pathInput     = document.getElementById('path-input');
-const paramsList    = document.getElementById('params-list');
-const paramsEmpty   = document.getElementById('params-empty');
-const urlPreview    = document.getElementById('url-preview');
-const addParamBtn   = document.getElementById('add-param-btn');
-const applyBtn      = document.getElementById('apply-btn');
-const resetBtn      = document.getElementById('reset-btn');
+const originDisplay   = document.getElementById('origin-display');
+const pathInput       = document.getElementById('path-input');
+const paramsList      = document.getElementById('params-list');
+const paramsEmpty     = document.getElementById('params-empty');
+const urlPreview      = document.getElementById('url-preview');
+const addParamBtn     = document.getElementById('add-param-btn');
+const applyBtn        = document.getElementById('apply-btn');
+const resetBtn        = document.getElementById('reset-btn');
+const profileNameInput = document.getElementById('profile-name-input');
+const saveProfileBtn  = document.getElementById('save-profile-btn');
+const profilesList    = document.getElementById('profiles-list');
+const profilesEmpty   = document.getElementById('profiles-empty');
 
 // ── Storage helpers ────────────────────────────────────────────────────────────
 
@@ -62,6 +68,83 @@ async function loadState() {
 function clearState() {
   if (!storageKey) return;
   chrome.storage.local.remove(storageKey);
+}
+
+// ── Profile storage ────────────────────────────────────────────────────────────
+
+const PROFILES_KEY = 'ri_profiles';
+
+/**
+ * Read all saved profiles.
+ * @returns {Promise<Record<string, { params: SerializedParam[] }>>}
+ */
+async function readProfiles() {
+  const result = await chrome.storage.local.get(PROFILES_KEY);
+  return result[PROFILES_KEY] ?? {};
+}
+
+/** Persist the full profiles map. */
+function writeProfiles(profiles) {
+  chrome.storage.local.set({ [PROFILES_KEY]: profiles });
+}
+
+/** Save current params under a given name. Overwrites if name already exists. */
+async function saveProfile(name) {
+  const profiles = await readProfiles();
+  profiles[name] = {
+    params: params.map(({ enabled, key, value }) => ({ enabled, key, value })),
+  };
+  writeProfiles(profiles);
+}
+
+/** Delete a profile by name. */
+async function deleteProfile(name) {
+  const profiles = await readProfiles();
+  delete profiles[name];
+  writeProfiles(profiles);
+}
+
+// ── Profile UI ─────────────────────────────────────────────────────────────────
+
+async function renderProfileList() {
+  profilesList.querySelectorAll('.profile-row').forEach(el => el.remove());
+  const profiles = await readProfiles();
+  const names = Object.keys(profiles);
+  profilesEmpty.style.display = names.length === 0 ? 'block' : 'none';
+
+  names.forEach(name => {
+    const row = document.createElement('div');
+    row.className = 'profile-row';
+
+    const nameEl = document.createElement('span');
+    nameEl.className   = 'profile-name';
+    nameEl.textContent = name;
+    nameEl.title       = name;
+
+    const loadBtn = document.createElement('button');
+    loadBtn.className   = 'btn-load';
+    loadBtn.textContent = 'Load';
+    loadBtn.addEventListener('click', () => {
+      params = profiles[name].params.map((p, i) => ({ id: nextId++, ...p }));
+      renderParamRows();
+      updatePreview();
+      saveState();
+    });
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className   = 'btn-delete';
+    deleteBtn.title       = 'Delete profile';
+    deleteBtn.textContent = '×';
+    deleteBtn.addEventListener('click', async () => {
+      await deleteProfile(name);
+      row.remove();
+      const remaining = profilesList.querySelectorAll('.profile-row');
+      profilesEmpty.style.display = remaining.length === 0 ? 'block' : 'none';
+    });
+
+    row.append(nameEl, loadBtn, deleteBtn);
+    profilesList.appendChild(row);
+  });
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────────
@@ -104,6 +187,7 @@ async function init() {
   }
 
   renderParamRows();
+  renderProfileList();
   updatePreview();
 }
 
@@ -294,6 +378,22 @@ resetBtn.addEventListener('click', () => {
 pathInput.addEventListener('input', () => {
   updatePreview();
   saveState();
+});
+
+saveProfileBtn.addEventListener('click', async () => {
+  const name = profileNameInput.value.trim();
+  if (!name) {
+    profileNameInput.focus();
+    return;
+  }
+  await saveProfile(name);
+  profileNameInput.value = '';
+  renderProfileList();
+});
+
+// Allow pressing Enter in the name input to save
+profileNameInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') saveProfileBtn.click();
 });
 
 // ── Bootstrap ──────────────────────────────────────────────────────────────────

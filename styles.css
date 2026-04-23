@@ -259,6 +259,83 @@ input[type="text"]:focus {
   background: rgba(224, 82, 96, 0.1);
 }
 
+/* ── Profiles section ──────────────────────────────────────── */
+.profiles-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-save-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.profile-save-row input {
+  flex: 1;
+}
+
+.profile-save-row .btn {
+  flex-shrink: 0;
+  padding: 6px 12px;
+}
+
+.profiles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 130px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.profiles-list::-webkit-scrollbar        { width: 4px; }
+.profiles-list::-webkit-scrollbar-track  { background: transparent; }
+.profiles-list::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 2px; }
+
+.profile-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 6px;
+  align-items: center;
+  background: var(--bg-row);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  transition: background var(--transition);
+}
+
+.profile-row:hover { background: var(--bg-row-hover); }
+
+.profile-name {
+  font-size: 11px;
+  color: var(--accent-green);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-load {
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  background: transparent;
+  color: var(--accent-green);
+  border: 1px solid var(--accent-green);
+  transition: background var(--transition), color var(--transition);
+  white-space: nowrap;
+}
+
+.btn-load:hover {
+  background: rgba(61, 220, 151, 0.12);
+}
+
 /* ── Preview ───────────────────────────────────────────────── */
 .preview-section {
   display: flex;
