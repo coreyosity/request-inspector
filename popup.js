@@ -6,6 +6,10 @@
  * popup.js — Request Inspector
  * Handles URL parsing, query-parameter table management, live preview,
  * and navigation via chrome.tabs.update.
+ *
+ * State is persisted to chrome.storage.local, keyed by origin + pathname
+ * (i.e. the URL before query parameters), so unapplied edits survive
+ * between popup opens on the same page.
  */
 
 'use strict';
@@ -16,6 +20,7 @@
 let params = [];
 let nextId = 0;
 let originalUrl = '';
+let storageKey  = '';   // origin + pathname — used as the chrome.storage.local key
 
 // ── DOM refs ───────────────────────────────────────────────────────────────────
 
@@ -28,9 +33,43 @@ const addParamBtn   = document.getElementById('add-param-btn');
 const applyBtn      = document.getElementById('apply-btn');
 const resetBtn      = document.getElementById('reset-btn');
 
+// ── Storage helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Persist the current working state under the page's base URL key.
+ * Saved shape: { path: string, params: SerializedParam[] }
+ */
+function saveState() {
+  if (!storageKey) return;
+  const state = {
+    path: pathInput.value,
+    params: params.map(({ enabled, key, value }) => ({ enabled, key, value })),
+  };
+  chrome.storage.local.set({ [storageKey]: state });
+}
+
+/**
+ * Load previously saved state for the current page.
+ * @returns {Promise<{ path: string, params: SerializedParam[] } | null>}
+ */
+async function loadState() {
+  if (!storageKey) return null;
+  const result = await chrome.storage.local.get(storageKey);
+  return result[storageKey] ?? null;
+}
+
+/** Remove the saved state for the current page. */
+function clearState() {
+  if (!storageKey) return;
+  chrome.storage.local.remove(storageKey);
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────────
 
 async function init() {
+  params = [];
+  nextId = 0;
+
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.url) {
     showPreviewError('Cannot inspect this page.');
@@ -46,12 +85,23 @@ async function init() {
     return;
   }
 
+  storageKey = parsed.origin + parsed.pathname;
   originDisplay.value = parsed.origin;
-  pathInput.value     = parsed.pathname;
 
-  parsed.searchParams.forEach((value, key) => {
-    params.push({ id: nextId++, enabled: true, key, value });
-  });
+  // Attempt to restore a previously saved draft for this page.
+  const saved = await loadState();
+
+  if (saved) {
+    pathInput.value = saved.path;
+    saved.params.forEach(({ enabled, key, value }) => {
+      params.push({ id: nextId++, enabled, key, value });
+    });
+  } else {
+    pathInput.value = parsed.pathname;
+    parsed.searchParams.forEach((value, key) => {
+      params.push({ id: nextId++, enabled: true, key, value });
+    });
+  }
 
   renderParamRows();
   updatePreview();
@@ -60,15 +110,9 @@ async function init() {
 // ── Param row rendering ────────────────────────────────────────────────────────
 
 function renderParamRows() {
-  // Remove all rows (leave the empty-state div in place)
   paramsList.querySelectorAll('.param-row').forEach(el => el.remove());
-
   paramsEmpty.style.display = params.length === 0 ? 'block' : 'none';
-
-  params.forEach(param => {
-    const row = buildParamRow(param);
-    paramsList.appendChild(row);
-  });
+  params.forEach(param => paramsList.appendChild(buildParamRow(param)));
 }
 
 /**
@@ -97,6 +141,7 @@ function buildParamRow(param) {
     row.classList.toggle('disabled', !param.enabled);
     label.title = param.enabled ? 'Disable parameter' : 'Enable parameter';
     updatePreview();
+    saveState();
   });
 
   const track = document.createElement('span');
@@ -115,6 +160,7 @@ function buildParamRow(param) {
   keyInput.addEventListener('input', () => {
     param.key = keyInput.value;
     updatePreview();
+    saveState();
   });
 
   // ── Value input ──
@@ -127,18 +173,20 @@ function buildParamRow(param) {
   valueInput.addEventListener('input', () => {
     param.value = valueInput.value;
     updatePreview();
+    saveState();
   });
 
   // ── Delete button ──
   const deleteBtn = document.createElement('button');
-  deleteBtn.className = 'btn-delete';
-  deleteBtn.title     = 'Remove parameter';
+  deleteBtn.className   = 'btn-delete';
+  deleteBtn.title       = 'Remove parameter';
   deleteBtn.textContent = '×';
   deleteBtn.addEventListener('click', () => {
     params = params.filter(p => p.id !== param.id);
     row.remove();
     paramsEmpty.style.display = params.length === 0 ? 'block' : 'none';
     updatePreview();
+    saveState();
   });
 
   row.append(toggleWrapper, keyInput, valueInput, deleteBtn);
@@ -176,7 +224,6 @@ function updatePreview() {
 
   urlPreview.classList.remove('error');
 
-  // Build colour-coded HTML
   let parsed;
   try { parsed = new URL(url); } catch { showPreviewError(url); return; }
 
@@ -188,7 +235,7 @@ function updatePreview() {
     return;
   }
 
-  const sep = span('preview-sep', '?');
+  const sep   = span('preview-sep', '?');
   const pairs = [...parsed.searchParams.entries()].map(([k, v], i) => {
     const amp = i > 0 ? span('preview-amp', '&amp;') : '';
     return amp + span('preview-key', escHtml(k)) +
@@ -223,9 +270,9 @@ addParamBtn.addEventListener('click', () => {
   paramsEmpty.style.display = 'none';
   const row = buildParamRow(param);
   paramsList.appendChild(row);
-  // Focus the key input of the new row
   row.querySelector('.param-key').focus();
   updatePreview();
+  saveState();
 });
 
 applyBtn.addEventListener('click', async () => {
@@ -235,17 +282,21 @@ applyBtn.addEventListener('click', async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
 
+  // Clear the draft — the new URL becomes the source of truth.
+  clearState();
   await chrome.tabs.update(tab.id, { url });
   window.close();
 });
 
 resetBtn.addEventListener('click', () => {
-  params = [];
-  nextId = 0;
+  clearState();
   init();
 });
 
-pathInput.addEventListener('input', updatePreview);
+pathInput.addEventListener('input', () => {
+  updatePreview();
+  saveState();
+});
 
 // ── Bootstrap ──────────────────────────────────────────────────────────────────
 
