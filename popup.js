@@ -16,7 +16,7 @@ const storage   = new StorageService();
 const inspector = new InspectorController(storage);
 const profiles  = new ProfilesController(storage, {
   getParams:   ()  => inspector.getParams(),
-  applyParams: (p) => inspector.applyParams(p),
+  applyParams: (name, p) => inspector.applyParams(name, p),
 });
 
 // ── Tab switching ──────────────────────────────────────────────────────────────

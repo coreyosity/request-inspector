@@ -252,6 +252,29 @@ input[type="text"]:focus {
 
 .param-row:hover { background: var(--bg-row-hover); }
 
+.param-row.source-default { border-left: 2px solid transparent; }
+.param-row.source-profile  { border-left: 2px solid var(--accent-amber); }
+
+.params-source-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--accent-amber);
+}
+
+.params-source-header::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--accent-amber);
+  opacity: 0.25;
+}
+
 .param-row.disabled {
   opacity: 0.4;
 }

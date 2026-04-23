@@ -60,13 +60,13 @@ export class InspectorController {
     const saved = await this._storage.loadState();
     if (saved) {
       this._pathInput.value = saved.path;
-      saved.params.forEach(({ enabled, key, value }) => {
-        this._params.push({ id: this._nextId++, enabled, key, value });
+      saved.params.forEach(({ enabled, key, value, source = 'default' }) => {
+        this._params.push({ id: this._nextId++, enabled, key, value, source });
       });
     } else {
       this._pathInput.value = parsed.pathname;
       parsed.searchParams.forEach((value, key) => {
-        this._params.push({ id: this._nextId++, enabled: true, key, value });
+        this._params.push({ id: this._nextId++, enabled: true, key, value, source: 'default' });
       });
     }
 
@@ -88,16 +88,18 @@ export class InspectorController {
    * Existing keys are overridden; new keys are appended.
    * Params already present but absent from the profile are left untouched.
    * Called by ProfilesController when the user clicks Apply.
+   * @param {string} profileName
    * @param {{ enabled: boolean, key: string, value: string }[]} serialized
    */
-  applyParams(serialized) {
+  applyParams(profileName, serialized) {
     serialized.forEach(({ key, value, enabled }) => {
       const existing = this._params.find(p => p.key === key);
       if (existing) {
         existing.value   = value;
         existing.enabled = enabled;
+        existing.source  = profileName;
       } else {
-        this._params.push({ id: this._nextId++, key, value, enabled });
+        this._params.push({ id: this._nextId++, key, value, enabled, source: profileName });
       }
     });
     this._renderParamRows();
@@ -114,14 +116,36 @@ export class InspectorController {
   // ── Param rows ───────────────────────────────────────────────────────────────
 
   _renderParamRows() {
-    this._paramsList.querySelectorAll('.param-row').forEach(el => el.remove());
+    this._paramsList.querySelectorAll('.param-row, .params-source-header').forEach(el => el.remove());
     this._paramsEmpty.style.display = this._params.length === 0 ? 'block' : 'none';
-    this._params.forEach(p => this._paramsList.appendChild(this._buildParamRow(p)));
+
+    // Default params render first, ungrouped
+    this._params
+      .filter(p => p.source === 'default')
+      .forEach(p => this._paramsList.appendChild(this._buildParamRow(p)));
+
+    // Profile params grouped by profile name, each with a section header
+    const groups = new Map();
+    this._params
+      .filter(p => p.source !== 'default')
+      .forEach(p => {
+        if (!groups.has(p.source)) groups.set(p.source, []);
+        groups.get(p.source).push(p);
+      });
+
+    groups.forEach((groupParams, profileName) => {
+      const header = document.createElement('div');
+      header.className   = 'params-source-header';
+      header.textContent = profileName;
+      this._paramsList.appendChild(header);
+      groupParams.forEach(p => this._paramsList.appendChild(this._buildParamRow(p)));
+    });
   }
 
   _buildParamRow(param) {
     const row = document.createElement('div');
-    row.className  = 'param-row' + (param.enabled ? '' : ' disabled');
+    const sourceClass = (param.source === 'default') ? 'source-default' : 'source-profile';
+    row.className  = `param-row ${sourceClass}` + (param.enabled ? '' : ' disabled');
     row.dataset.id = param.id;
 
     // Toggle
@@ -243,7 +267,8 @@ export class InspectorController {
   // ── Storage delegation ───────────────────────────────────────────────────────
 
   _saveState() {
-    this._storage.saveState(this._pathInput.value, this.getParams());
+    const params = this._params.map(({ enabled, key, value, source }) => ({ enabled, key, value, source }));
+    this._storage.saveState(this._pathInput.value, params);
   }
 
   // ── Event wiring ─────────────────────────────────────────────────────────────
@@ -255,7 +280,7 @@ export class InspectorController {
     });
 
     this._addParamBtn.addEventListener('click', () => {
-      const param = { id: this._nextId++, enabled: true, key: '', value: '' };
+      const param = { id: this._nextId++, enabled: true, key: '', value: '', source: 'default' };
       this._params.push(param);
       this._paramsEmpty.style.display = 'none';
       const row = this._buildParamRow(param);

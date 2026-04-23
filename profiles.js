@@ -97,7 +97,7 @@ export class ProfilesController {
     const loadBtn       = document.createElement('button');
     loadBtn.className   = 'btn-apply';
     loadBtn.textContent = 'Apply';
-    loadBtn.addEventListener('click', () => this._applyParams(params));
+    loadBtn.addEventListener('click', () => this._applyParams(name, params));
 
     const deleteBtn       = document.createElement('button');
     deleteBtn.className   = 'btn-delete';
