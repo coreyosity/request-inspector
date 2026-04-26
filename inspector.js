@@ -396,6 +396,10 @@ export class InspectorController {
     deleteBtn.addEventListener('click', () => {
       this._params = this._params.filter(p => p.id !== param.id);
       row.remove();
+      // Clean up the custom-group wrapper when the last custom param is removed
+      if (param.source === 'custom' && !this._params.some(p => p.source === 'custom')) {
+        this._paramsList.querySelector('.custom-group')?.remove();
+      }
       this._paramsEmpty.style.display = this._params.length === 0 ? 'block' : 'none';
       this._updatePreview();
     });

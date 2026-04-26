@@ -335,4 +335,211 @@ describe('InspectorController', () => {
       expect(onProfileEnable).toHaveBeenCalledWith(null);
     });
   });
+
+  // ── onSaveToProfile ─────────────────────────────────────────────────────────
+
+  describe('onSaveToProfile', () => {
+    async function setupWithCustomParam(callbacks = {}, storageOverrides = {}) {
+      chrome.tabs.query.mockResolvedValueOnce([{ id: 1, url: 'https://example.com/?default=1' }]);
+      const { ctrl } = makeController(
+        { readProfiles: vi.fn().mockResolvedValue({}), ...storageOverrides },
+        callbacks,
+      );
+      await ctrl.init();
+      document.getElementById('add-param-btn').click();
+      // Fill in key/value on the new custom param row
+      const row      = document.querySelector('.param-row.source-custom');
+      const keyInput = row.querySelector('.param-key');
+      const valInput = row.querySelector('.param-value');
+      keyInput.value = 'myKey';
+      keyInput.dispatchEvent(new Event('input'));
+      valInput.value = 'myVal';
+      valInput.dispatchEvent(new Event('input'));
+      return ctrl;
+    }
+
+    it('invokes the callback with the profile name and serialised custom params', async () => {
+      const onSaveToProfile = vi.fn().mockResolvedValue(undefined);
+      await setupWithCustomParam({ onSaveToProfile });
+
+      const nameInput  = document.querySelector('.save-to-profile-row input');
+      const confirmBtn = document.querySelector('.save-to-profile-row .btn-primary');
+      nameInput.value  = 'MyProfile';
+      confirmBtn.click();
+
+      expect(onSaveToProfile).toHaveBeenCalledOnce();
+      expect(onSaveToProfile).toHaveBeenCalledWith('MyProfile', [
+        { enabled: true, key: 'myKey', value: 'myVal' },
+      ]);
+    });
+
+    it('does not include default params in the save payload', async () => {
+      const onSaveToProfile = vi.fn().mockResolvedValue(undefined);
+      await setupWithCustomParam({ onSaveToProfile });
+
+      const nameInput  = document.querySelector('.save-to-profile-row input');
+      const confirmBtn = document.querySelector('.save-to-profile-row .btn-primary');
+      nameInput.value  = 'Test';
+      confirmBtn.click();
+
+      const [, params] = onSaveToProfile.mock.calls[0];
+      expect(params.every(p => p.key !== 'default')).toBe(true);
+    });
+
+    it('does not include profile params in the save payload', async () => {
+      const onSaveToProfile = vi.fn().mockResolvedValue(undefined);
+      await setupWithCustomParam({ onSaveToProfile }, {
+        readProfiles: vi.fn().mockResolvedValue({
+          Dev: { params: [{ enabled: true, key: 'envKey', value: 'dev' }], headers: [] },
+        }),
+      });
+
+      const nameInput  = document.querySelector('.save-to-profile-row input');
+      const confirmBtn = document.querySelector('.save-to-profile-row .btn-primary');
+      nameInput.value  = 'Snapshot';
+      confirmBtn.click();
+
+      const [, params] = onSaveToProfile.mock.calls[0];
+      expect(params.every(p => p.key !== 'envKey')).toBe(true);
+    });
+
+    it('does not invoke the callback when the profile name is empty', async () => {
+      const onSaveToProfile = vi.fn().mockResolvedValue(undefined);
+      await setupWithCustomParam({ onSaveToProfile });
+
+      // Leave nameInput empty
+      document.querySelector('.save-to-profile-row .btn-primary').click();
+
+      expect(onSaveToProfile).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when onSaveToProfile is not provided', async () => {
+      chrome.tabs.query.mockResolvedValueOnce([{ id: 1, url: 'https://example.com/' }]);
+      const { ctrl } = makeController({ readProfiles: vi.fn().mockResolvedValue({}) });
+      await ctrl.init();
+      document.getElementById('add-param-btn').click();
+
+      const nameInput  = document.querySelector('.save-to-profile-row input');
+      const confirmBtn = document.querySelector('.save-to-profile-row .btn-primary');
+      nameInput.value  = 'Anything';
+      expect(() => confirmBtn.click()).not.toThrow();
+    });
+
+    it('hides the save form and clears the name input after a successful save', async () => {
+      const onSaveToProfile = vi.fn().mockResolvedValue(undefined);
+      await setupWithCustomParam({ onSaveToProfile });
+
+      const nameInput  = document.querySelector('.save-to-profile-row input');
+      const confirmBtn = document.querySelector('.save-to-profile-row .btn-primary');
+      nameInput.value  = 'Profile';
+      confirmBtn.click();
+      await Promise.resolve(); // let the async handler's continuation run
+
+      const saveRow = document.querySelector('.save-to-profile-row');
+      expect(saveRow.classList.contains('hidden')).toBe(true);
+      expect(nameInput.value).toBe('');
+    });
+  });
+
+  // ── custom params DOM structure ─────────────────────────────────────────────
+
+  describe('custom params DOM structure', () => {
+    it('wraps custom params in a .custom-group with a source-custom header', async () => {
+      chrome.tabs.query.mockResolvedValueOnce([{ id: 1, url: 'https://example.com/' }]);
+      const { ctrl } = makeController();
+      await ctrl.init();
+
+      document.getElementById('add-param-btn').click();
+
+      const customGroup = document.querySelector('.custom-group');
+      expect(customGroup).toBeTruthy();
+      expect(customGroup.querySelector('.params-source-header.source-custom')).toBeTruthy();
+    });
+
+    it('does not render a .custom-group when no custom params exist', async () => {
+      chrome.tabs.query.mockResolvedValueOnce([{ id: 1, url: 'https://example.com/?foo=1' }]);
+      const { ctrl } = makeController();
+      await ctrl.init();
+
+      expect(document.querySelector('.custom-group')).toBeNull();
+    });
+
+    it('removes the .custom-group wrapper when the last custom param is deleted', async () => {
+      chrome.tabs.query.mockResolvedValueOnce([{ id: 1, url: 'https://example.com/' }]);
+      const { ctrl } = makeController();
+      await ctrl.init();
+
+      document.getElementById('add-param-btn').click();
+      expect(document.querySelector('.custom-group')).toBeTruthy();
+
+      document.querySelector('.param-row.source-custom .btn-delete').click();
+
+      expect(document.querySelector('.custom-group')).toBeNull();
+    });
+
+    it('keeps the .custom-group when more than one custom param exists after deletion', async () => {
+      chrome.tabs.query.mockResolvedValueOnce([{ id: 1, url: 'https://example.com/' }]);
+      const { ctrl } = makeController();
+      await ctrl.init();
+
+      document.getElementById('add-param-btn').click();
+      document.getElementById('add-param-btn').click();
+
+      document.querySelector('.param-row.source-custom .btn-delete').click();
+
+      expect(document.querySelector('.custom-group')).toBeTruthy();
+    });
+
+    it('save-to-profile-row is hidden by default', async () => {
+      chrome.tabs.query.mockResolvedValueOnce([{ id: 1, url: 'https://example.com/' }]);
+      const { ctrl } = makeController();
+      await ctrl.init();
+
+      document.getElementById('add-param-btn').click();
+
+      expect(document.querySelector('.save-to-profile-row').classList.contains('hidden')).toBe(true);
+    });
+
+    it('save-to-profile-row becomes visible after clicking the Save as Profile button', async () => {
+      chrome.tabs.query.mockResolvedValueOnce([{ id: 1, url: 'https://example.com/' }]);
+      const { ctrl } = makeController();
+      await ctrl.init();
+
+      document.getElementById('add-param-btn').click();
+      document.querySelector('.btn-save-profile').click();
+
+      expect(document.querySelector('.save-to-profile-row').classList.contains('hidden')).toBe(false);
+    });
+
+    it('save-to-profile-row hides again when the cancel button is clicked', async () => {
+      chrome.tabs.query.mockResolvedValueOnce([{ id: 1, url: 'https://example.com/' }]);
+      const { ctrl } = makeController();
+      await ctrl.init();
+
+      document.getElementById('add-param-btn').click();
+      document.querySelector('.btn-save-profile').click();
+      document.querySelector('.save-to-profile-row .btn-ghost').click();
+
+      expect(document.querySelector('.save-to-profile-row').classList.contains('hidden')).toBe(true);
+    });
+
+    it('places .custom-group after .profile-group elements in the DOM', async () => {
+      chrome.tabs.query.mockResolvedValueOnce([{ id: 1, url: 'https://example.com/' }]);
+      const { ctrl } = makeController({
+        readProfiles: vi.fn().mockResolvedValue({
+          Dev: { params: [{ enabled: true, key: 'env', value: 'dev' }], headers: [] },
+        }),
+      });
+      await ctrl.init();
+
+      document.getElementById('add-param-btn').click();
+
+      const children   = [...document.getElementById('params-list').children];
+      const profileIdx = children.findIndex(el => el.classList.contains('profile-group'));
+      const customIdx  = children.findIndex(el => el.classList.contains('custom-group'));
+
+      expect(profileIdx).toBeGreaterThanOrEqual(0);
+      expect(customIdx).toBeGreaterThan(profileIdx);
+    });
+  });
 });
