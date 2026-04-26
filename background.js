@@ -43,7 +43,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // ── Request storage ───────────────────────────────────────────────────────────
 
-async function handleCapturedRequest(payload, tab) {
+export async function handleCapturedRequest(payload, tab) {
   if (!tab) return;
 
   const stored = await chrome.storage.session.get(SESSION_REQUESTS_KEY);

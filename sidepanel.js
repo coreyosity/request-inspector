@@ -47,15 +47,19 @@ const $filterFP    = document.getElementById('filter-first-party');
 const $filterJSON  = document.getElementById('filter-json');
 const $filterURL   = document.getElementById('filter-url');
 
-function applyFilters() {
-  const { firstParty, json, method, url } = state.filters;
-  state.filtered = state.requests.filter(r => {
+export function filterRequests(requests, filters) {
+  const { firstParty, json, method, url } = filters;
+  return requests.filter(r => {
     if (firstParty && !r.firstParty) return false;
     if (json && !(r.contentType && r.contentType.includes('application/json')) && !r.pending) return false;
     if (method && r.method !== method) return false;
     if (url && !r.url.toLowerCase().includes(url.toLowerCase())) return false;
     return true;
   });
+}
+
+function applyFilters() {
+  state.filtered = filterRequests(state.requests, state.filters);
 }
 
 function renderMonitor() {
