@@ -15,13 +15,17 @@ import { ProfilesController }  from './profiles.js';
 const storage   = new StorageService();
 const headers   = new HeadersController(storage);
 const inspector = new InspectorController(storage, {
-  onApply:         async (_tabId, url) => headers.applyHeaders(url),
-  onReset:         async ()            => headers.clearRules(),
-  onProfileEnable: (name)             => headers.enableProfile(name),
+  onApply:          async (_tabId, url) => headers.applyHeaders(url),
+  onReset:          async ()            => headers.clearRules(),
+  onProfileEnable:  (name)             => headers.enableProfile(name),
+  onSaveToProfile:  async (name, params) => {
+    await storage.saveProfile(name, params, []);
+    inspector.refreshProfiles();
+    headers.refreshProfiles();
+    profiles.render();
+  },
 });
 const profiles  = new ProfilesController(storage, {
-  getParams:        ()     => inspector.getParams(),
-  getHeaders:       ()     => headers.getHeaders(),
   enableProfile:    (name) => inspector.enableProfile(name),
   onProfilesChange: ()     => { inspector.refreshProfiles(); headers.refreshProfiles(); },
 });

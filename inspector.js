@@ -16,11 +16,12 @@ export class InspectorController {
    * @param {{ onApply?: (tabId: number, url: string) => Promise<void>,
    *            onReset?: () => Promise<void> }} [callbacks]
    */
-  constructor(storage, { onApply, onReset, onProfileEnable } = {}) {
-    this._storage          = storage;
-    this._onApply          = onApply          ?? null;
-    this._onReset          = onReset          ?? null;
-    this._onProfileEnable  = onProfileEnable  ?? null;
+  constructor(storage, { onApply, onReset, onProfileEnable, onSaveToProfile } = {}) {
+    this._storage           = storage;
+    this._onApply           = onApply           ?? null;
+    this._onReset           = onReset           ?? null;
+    this._onProfileEnable   = onProfileEnable   ?? null;
+    this._onSaveToProfile   = onSaveToProfile   ?? null;
 
     /** @type {{ id: number, enabled: boolean, key: string, value: string, source: string }[]} */
     this._params         = [];
@@ -173,25 +174,17 @@ export class InspectorController {
   // ── Param rows ───────────────────────────────────────────────────────────────
 
   _renderParamRows() {
-    this._paramsList.querySelectorAll('.param-row, .params-source-header, .profile-group').forEach(el => el.remove());
+    this._paramsList.querySelectorAll('.param-row, .params-source-header, .profile-group, .custom-group').forEach(el => el.remove());
 
-    const nonProfileCount = this._params.filter(p => p.source === 'default' || p.source === 'custom').length;
-    const profileCount    = this._params.filter(p => p.source !== 'default' && p.source !== 'custom').length;
-    this._paramsEmpty.style.display = (nonProfileCount + profileCount) === 0 ? 'block' : 'none';
+    const totalCount = this._params.length;
+    this._paramsEmpty.style.display = totalCount === 0 ? 'block' : 'none';
 
     // 1. URL params — no header
     this._params
       .filter(p => p.source === 'default')
       .forEach(p => this._paramsList.appendChild(this._buildParamRow(p)));
 
-    // 2. Manually added params — "Custom Params" header
-    const customParams = this._params.filter(p => p.source === 'custom');
-    if (customParams.length > 0) {
-      this._paramsList.appendChild(this._buildGroupHeader('Custom Params', 'custom', customParams, 'custom'));
-      customParams.forEach(p => this._paramsList.appendChild(this._buildParamRow(p)));
-    }
-
-    // 3. Profile params — each profile wrapped in .profile-group; only the enabled one is active
+    // 2. Profile params — each profile wrapped in .profile-group; only the enabled one is active
     const groups = new Map();
     this._params
       .filter(p => p.source !== 'default' && p.source !== 'custom')
@@ -208,6 +201,67 @@ export class InspectorController {
       groupParams.forEach(p => wrapper.appendChild(this._buildParamRow(p)));
       this._paramsList.appendChild(wrapper);
     });
+
+    // 3. Manually added params — wrapped in .custom-group with "Save as Profile" action
+    const customParams = this._params.filter(p => p.source === 'custom');
+    if (customParams.length > 0) {
+      const customWrapper = document.createElement('div');
+      customWrapper.className = 'custom-group';
+
+      const header = this._buildGroupHeader('Custom Params', 'custom', customParams, 'custom');
+
+      // "Save as Profile" toggle button appended to the header
+      const saveToggleBtn       = document.createElement('button');
+      saveToggleBtn.className   = 'btn-save-profile';
+      saveToggleBtn.textContent = 'Save as Profile';
+
+      // Inline save form (hidden by default)
+      const saveRow       = document.createElement('div');
+      saveRow.className   = 'save-to-profile-row hidden';
+      const nameInput     = document.createElement('input');
+      nameInput.type      = 'text';
+      nameInput.className = 'input-editable';
+      nameInput.placeholder = 'Profile name…';
+      nameInput.spellcheck  = false;
+      const confirmBtn       = document.createElement('button');
+      confirmBtn.className   = 'btn btn-xs btn-primary';
+      confirmBtn.textContent = 'Save';
+      const cancelSaveBtn       = document.createElement('button');
+      cancelSaveBtn.className   = 'btn btn-xs btn-ghost';
+      cancelSaveBtn.textContent = '✕';
+      saveRow.append(nameInput, confirmBtn, cancelSaveBtn);
+
+      const showSaveRow = () => { saveRow.classList.remove('hidden'); nameInput.focus(); };
+      const hideSaveRow = () => { saveRow.classList.add('hidden'); nameInput.value = ''; };
+
+      saveToggleBtn.addEventListener('click', () => {
+        saveRow.classList.contains('hidden') ? showSaveRow() : hideSaveRow();
+      });
+
+      confirmBtn.addEventListener('click', async () => {
+        const name = nameInput.value.trim();
+        if (!name) { nameInput.focus(); return; }
+        if (this._onSaveToProfile) {
+          await this._onSaveToProfile(
+            name,
+            customParams.map(({ enabled, key, value }) => ({ enabled, key, value }))
+          );
+        }
+        hideSaveRow();
+      });
+
+      cancelSaveBtn.addEventListener('click', hideSaveRow);
+
+      nameInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') confirmBtn.click();
+        if (e.key === 'Escape') hideSaveRow();
+      });
+
+      header.appendChild(saveToggleBtn);
+      customWrapper.append(header, saveRow);
+      customParams.forEach(p => customWrapper.appendChild(this._buildParamRow(p)));
+      this._paramsList.appendChild(customWrapper);
+    }
   }
 
   /**
@@ -342,6 +396,10 @@ export class InspectorController {
     deleteBtn.addEventListener('click', () => {
       this._params = this._params.filter(p => p.id !== param.id);
       row.remove();
+      // Clean up the custom-group wrapper when the last custom param is removed
+      if (param.source === 'custom' && !this._params.some(p => p.source === 'custom')) {
+        this._paramsList.querySelector('.custom-group')?.remove();
+      }
       this._paramsEmpty.style.display = this._params.length === 0 ? 'block' : 'none';
       this._updatePreview();
     });
@@ -417,10 +475,8 @@ export class InspectorController {
     this._addParamBtn.addEventListener('click', () => {
       const param = { id: this._nextId++, enabled: true, key: '', value: '', source: 'custom' };
       this._params.push(param);
-      this._paramsEmpty.style.display = 'none';
-      const row = this._buildParamRow(param);
-      this._paramsList.appendChild(row);
-      row.querySelector('.param-key').focus();
+      this._renderParamRows();
+      this._paramsList.querySelector(`[data-id="${param.id}"]`)?.querySelector('.param-key')?.focus();
       this._updatePreview();
     });
 

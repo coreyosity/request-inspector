@@ -15,10 +15,8 @@ export class ProfilesController {
    * @param {import('./storage.js').StorageService} storage
    * @param {{ getParams: () => Array, loadParams: (params: Array) => void }} inspector
    */
-  constructor(storage, { getParams, getHeaders, enableProfile, onProfilesChange }) {
+  constructor(storage, { enableProfile, onProfilesChange }) {
     this._storage           = storage;
-    this._getParams         = getParams;
-    this._getHeaders        = getHeaders;
     this._enableProfile     = enableProfile;
     this._onProfilesChange  = onProfilesChange ?? null;
 
@@ -28,15 +26,12 @@ export class ProfilesController {
     this._activeEditRow   = null;
 
     // DOM refs
-    this._profileNameInput  = document.getElementById('profile-name-input');
-    this._saveProfileBtn    = document.getElementById('save-profile-btn');
-    this._createProfileBtn  = document.getElementById('create-profile-btn');
+    this._createProfileBtn   = document.getElementById('create-profile-btn');
     this._createProfilePanel = document.getElementById('create-profile-panel');
-    this._profilesList      = document.getElementById('profiles-list');
-    this._profilesEmpty     = document.getElementById('profiles-empty');
+    this._profilesList       = document.getElementById('profiles-list');
+    this._profilesEmpty      = document.getElementById('profiles-empty');
 
     this._initCreatePanel();
-    this._bindEvents();
   }
 
   // ── Public API ───────────────────────────────────────────────────────────────
@@ -469,20 +464,4 @@ export class ProfilesController {
     });
   }
 
-  // ── Save new profile ─────────────────────────────────────────────────────────
-
-  _bindEvents() {
-    this._saveProfileBtn.addEventListener('click', async () => {
-      const name = this._profileNameInput.value.trim();
-      if (!name) { this._profileNameInput.focus(); return; }
-      await this._storage.saveProfile(name, this._getParams(), this._getHeaders());
-      this._profileNameInput.value = '';
-      if (this._onProfilesChange) this._onProfilesChange();
-      this.render();
-    });
-
-    this._profileNameInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter') this._saveProfileBtn.click();
-    });
-  }
 }
