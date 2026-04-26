@@ -749,6 +749,7 @@ input[type="text"]:focus {
   border-radius: var(--radius);
   padding: 10px 12px;
 }
+.settings-panel.hidden { display: none; }
 
 .settings-row {
   display: flex;
