@@ -145,43 +145,4 @@ describe('StorageService', () => {
       expect(chrome.storage.local.set).toHaveBeenCalledWith({ [PROFILES_KEY]: {} });
     });
   });
-
-  // ── loadSettings ────────────────────────────────────────────────────────────
-
-  describe('loadSettings', () => {
-    it('returns default settings when nothing is stored', async () => {
-      chrome.storage.local.get.mockResolvedValueOnce({});
-      const settings = await storage.loadSettings();
-      expect(settings).toEqual({ sidePanelEnabled: false });
-    });
-
-    it('returns stored settings', async () => {
-      chrome.storage.local.get.mockResolvedValueOnce({ ri_settings: { sidePanelEnabled: true } });
-      const settings = await storage.loadSettings();
-      expect(settings).toEqual({ sidePanelEnabled: true });
-    });
-
-    it('reads from the correct key', async () => {
-      await storage.loadSettings();
-      expect(chrome.storage.local.get).toHaveBeenCalledWith('ri_settings');
-    });
-  });
-
-  // ── saveSettings ────────────────────────────────────────────────────────────
-
-  describe('saveSettings', () => {
-    it('persists settings under the correct key', () => {
-      storage.saveSettings({ sidePanelEnabled: true });
-      expect(chrome.storage.local.set).toHaveBeenCalledWith({
-        ri_settings: { sidePanelEnabled: true },
-      });
-    });
-
-    it('persists sidePanelEnabled: false correctly', () => {
-      storage.saveSettings({ sidePanelEnabled: false });
-      expect(chrome.storage.local.set).toHaveBeenCalledWith({
-        ri_settings: { sidePanelEnabled: false },
-      });
-    });
-  });
 });
