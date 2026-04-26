@@ -727,3 +727,38 @@ input[type="text"]:focus {
   border-left-color: var(--accent-red);
   color: var(--accent-red);
 }
+
+/* ── Settings button & panel ───────────────────────────────── */
+.btn-settings {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  line-height: 1;
+  transition: color var(--transition);
+}
+.btn-settings:hover { color: var(--accent-cyan); }
+.btn-settings.active { color: var(--accent-cyan); }
+
+.settings-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.settings-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}

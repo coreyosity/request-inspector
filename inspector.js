@@ -122,6 +122,32 @@ export class InspectorController {
   }
 
   /**
+   * Pre-populate the inspector from a request captured by the side panel monitor.
+   * Replaces the current params with those from the captured request URL.
+   * The origin/path fields reflect the captured URL, not the current tab URL.
+   * @param {{ url: string, requestHeaders?: Record<string,string> }} req
+   */
+  loadFromRequest(req) {
+    let parsed;
+    try { parsed = new URL(req.url); } catch (_) { return; }
+
+    this._originDisplay.value = parsed.origin;
+    this._pathInput.value     = parsed.pathname;
+
+    // Keep only profile params; replace default/custom with captured ones.
+    this._params = this._params.filter(
+      p => p.source !== 'default' && p.source !== 'custom'
+    );
+
+    parsed.searchParams.forEach((value, key) => {
+      this._params.push({ id: this._nextId++, enabled: true, key, value, source: 'custom' });
+    });
+
+    this._renderParamRows();
+    this._updatePreview();
+  }
+
+  /**
    * Reload profile params from storage without resetting the rest of the
    * inspector state (path, custom params, enabled profile).
    * Called after any profile create/edit/delete in ProfilesController.
