@@ -50,28 +50,20 @@ document.querySelectorAll('.tab').forEach(tabBtn => {
 
 // ── Settings ───────────────────────────────────────────────────────────────────
 
-const $settingsBtn   = document.getElementById('settings-btn');
-const $settingsPanel = document.getElementById('settings-panel');
-const $toggleSP      = document.getElementById('toggle-side-panel');
+const $settingsBtn    = document.getElementById('settings-btn');
+const $settingsPanel  = document.getElementById('settings-panel');
+const $btnOpenMonitor = document.getElementById('btn-open-monitor');
 
 $settingsBtn.addEventListener('click', () => {
-  const open = $settingsPanel.classList.toggle('hidden');
-  $settingsBtn.classList.toggle('active', !open);
+  const nowHidden = $settingsPanel.classList.toggle('hidden');
+  $settingsBtn.classList.toggle('active', !nowHidden);
 });
 
-$toggleSP.addEventListener('change', async () => {
-  const enabled = $toggleSP.checked;
-  storage.saveSettings({ sidePanelEnabled: enabled });
-
-  if (enabled) {
-    chrome.runtime.sendMessage({ type: 'RI_OPEN_SIDE_PANEL' });
-  }
+$btnOpenMonitor.addEventListener('click', () => {
+  chrome.runtime.sendMessage({ type: 'RI_OPEN_SIDE_PANEL' });
+  $settingsPanel.classList.add('hidden');
+  $settingsBtn.classList.remove('active');
 });
-
-async function initSettings() {
-  const settings = await storage.loadSettings();
-  $toggleSP.checked = settings.sidePanelEnabled;
-}
 
 // ── Side panel handoff ─────────────────────────────────────────────────────────
 // When the user clicks "Open in Inspector" in the side panel, the request is
@@ -95,4 +87,3 @@ async function checkHandoff() {
 
 // headers.init() runs after inspector.init() so the profiles store is ready.
 inspector.init().then(() => { headers.init(); checkHandoff(); });
-initSettings();

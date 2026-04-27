@@ -20,15 +20,12 @@
       <button id="settings-btn" class="btn-settings" title="Settings">&#9881;</button>
     </header>
 
-    <!-- Settings panel (hidden by default) -->
+    <!-- Settings panel (hidden by default, floats over content) -->
     <div id="settings-panel" class="settings-panel hidden">
-      <label class="settings-row">
-        <span class="settings-label">Monitor (Side Panel)</span>
-        <span class="toggle-wrapper">
-          <input type="checkbox" id="toggle-side-panel" class="toggle" />
-          <span class="toggle-track"></span>
-        </span>
-      </label>
+      <div class="settings-row">
+        <span class="settings-label">Network Monitor</span>
+        <button id="btn-open-monitor" class="btn-open-monitor">Open Side Panel →</button>
+      </div>
     </div>
 
     <!-- Tab bar -->
