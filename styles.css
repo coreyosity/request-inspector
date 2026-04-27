@@ -736,8 +736,8 @@ input[type="text"]:focus {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 14px;
-  padding: 0 2px;
+  font-size: 20px;
+  padding: 0 4px;
   line-height: 1;
   transition: color var(--transition);
 }
