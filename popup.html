@@ -17,7 +17,16 @@
     <header>
       <span class="logo">&#x2316;</span>
       <h1>Request Inspector</h1>
+      <button id="settings-btn" class="btn-settings" title="Settings">&#9881;</button>
     </header>
+
+    <!-- Settings panel (hidden by default, floats over content) -->
+    <div id="settings-panel" class="settings-panel hidden">
+      <div class="settings-row">
+        <span class="settings-label">Network Monitor</span>
+        <button id="btn-open-monitor" class="btn-open-monitor">Open Side Panel →</button>
+      </div>
+    </div>
 
     <!-- Tab bar -->
     <nav class="tabs" role="tablist">

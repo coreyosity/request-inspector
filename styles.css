@@ -40,6 +40,7 @@ body {
 
 /* ── Layout container ──────────────────────────────────────── */
 .container {
+  position: relative;
   height: 100%;
   padding: 14px 16px 16px;
   display: flex;
@@ -727,3 +728,60 @@ input[type="text"]:focus {
   border-left-color: var(--accent-red);
   color: var(--accent-red);
 }
+
+/* ── Settings button & panel ───────────────────────────────── */
+.btn-settings {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 20px;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color var(--transition);
+}
+.btn-settings:hover { color: var(--accent-cyan); }
+.btn-settings.active { color: var(--accent-cyan); }
+
+.settings-panel {
+  position: absolute;
+  top: 54px;
+  right: 16px;
+  z-index: 100;
+  width: 220px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.4);
+}
+.settings-panel.hidden { display: none; }
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.settings-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.btn-open-monitor {
+  flex: 1;
+  background: var(--accent-cyan);
+  color: var(--bg-base);
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 8px;
+  cursor: pointer;
+  text-align: center;
+  transition: opacity var(--transition);
+}
+.btn-open-monitor:hover { opacity: 0.85; }

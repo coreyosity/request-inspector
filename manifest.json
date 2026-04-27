@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Request Inspector",
-  "version": "1.0.0",
-  "description": "Inspect, toggle, and modify the current tab's URL path and query parameters.",
+  "version": "1.1.0",
+  "description": "Inspect, modify, and monitor network requests on the current tab.",
   "permissions": [
     "activeTab",
     "declarativeNetRequest",
     "scripting",
+    "sidePanel",
     "storage",
     "tabs"
   ],
@@ -14,4 +15,28 @@
   "action": {
     "default_popup": "popup.html",
     "default_title": "Request Inspector"
-  }}
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["interceptor.js"],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["relay.js"],
+      "run_at": "document_start",
+      "world": "ISOLATED",
+      "all_frames": true
+    }
+  ]
+}

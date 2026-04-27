@@ -73,6 +73,19 @@ export class HeadersController extends KeyValueController {
   }
 
   /**
+   * Pre-populate manual headers from a request captured by the side panel.
+   * Replaces current manual headers with those from the captured request.
+   * @param {Record<string, string>} requestHeaders
+   */
+  loadFromRequest(requestHeaders) {
+    this._headers = [];
+    Object.entries(requestHeaders ?? {}).forEach(([key, value]) => {
+      this._headers.push({ id: this._nextId++, enabled: true, key, value });
+    });
+    this._renderRows();
+  }
+
+  /**
    * Reload profile headers from storage without resetting manual headers or
    * the active profile. Called after any profile create/edit/delete.
    */

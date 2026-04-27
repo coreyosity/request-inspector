@@ -263,4 +263,58 @@ describe('HeadersController', () => {
       expect(ctrl._profileHeaders.map(h => h.key)).toContain('X-Env');
     });
   });
+
+  // ── loadFromRequest ─────────────────────────────────────────────────────────
+
+  describe('loadFromRequest', () => {
+    it('populates manual headers from the captured request headers', () => {
+      const { ctrl } = makeController();
+      ctrl.loadFromRequest({
+        'Authorization': 'Bearer tok123',
+        'X-Request-Id':  'abc-456',
+      });
+
+      const headers = ctrl.getHeaders();
+      expect(headers).toContainEqual(expect.objectContaining({ key: 'Authorization', value: 'Bearer tok123', enabled: true }));
+      expect(headers).toContainEqual(expect.objectContaining({ key: 'X-Request-Id',  value: 'abc-456',       enabled: true }));
+    });
+
+    it('replaces any previously loaded manual headers', async () => {
+      const { ctrl } = makeController();
+      await ctrl.init();
+      document.getElementById('add-header-btn').click(); // adds one empty manual header
+
+      ctrl.loadFromRequest({ 'X-New': 'value' });
+
+      const headers = ctrl.getHeaders();
+      expect(headers).toHaveLength(1);
+      expect(headers[0].key).toBe('X-New');
+    });
+
+    it('results in an empty list when passed an empty object', () => {
+      const { ctrl } = makeController();
+      ctrl.loadFromRequest({});
+      expect(ctrl.getHeaders()).toHaveLength(0);
+    });
+
+    it('does not affect existing profile headers', async () => {
+      const { ctrl } = makeController({
+        readProfiles: vi.fn().mockResolvedValue({
+          Dev: { params: [], headers: [{ enabled: true, key: 'X-Profile', value: 'dev' }] },
+        }),
+      });
+      await ctrl.init();
+
+      ctrl.loadFromRequest({ 'Authorization': 'Bearer xyz' });
+
+      expect(ctrl._profileHeaders.map(h => h.key)).toContain('X-Profile');
+    });
+
+    it('marks all loaded headers as enabled by default', () => {
+      const { ctrl } = makeController();
+      ctrl.loadFromRequest({ 'Content-Type': 'application/json', 'Accept': '*/*' });
+
+      ctrl.getHeaders().forEach(h => expect(h.enabled).toBe(true));
+    });
+  });
 });
