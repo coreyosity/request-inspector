@@ -10,13 +10,16 @@
 
 'use strict';
 
-export class InspectorController {
+import { KeyValueController } from './key-value-controller.js';
+
+export class InspectorController extends KeyValueController {
   /**
    * @param {import('./storage.js').StorageService} storage
    * @param {{ onApply?: (tabId: number, url: string) => Promise<void>,
    *            onReset?: () => Promise<void> }} [callbacks]
    */
   constructor(storage, { onApply, onReset, onProfileEnable, onSaveToProfile } = {}) {
+    super();
     this._storage           = storage;
     this._onApply           = onApply           ?? null;
     this._onReset           = onReset           ?? null;
@@ -24,11 +27,8 @@ export class InspectorController {
     this._onSaveToProfile   = onSaveToProfile   ?? null;
 
     /** @type {{ id: number, enabled: boolean, key: string, value: string, source: string }[]} */
-    this._params         = [];
-    this._nextId         = 0;
-    this._originUrl      = '';
-    /** @type {string|null} Name of the currently active profile, or null. */
-    this._enabledProfile = null;
+    this._params    = [];
+    this._originUrl = '';
 
     // DOM refs
     this._originDisplay = document.getElementById('origin-display');
@@ -49,6 +49,7 @@ export class InspectorController {
     this._params         = [];
     this._nextId         = 0;
     this._enabledProfile = null;
+    this._originUrl      = '';
 
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.url) {
@@ -194,9 +195,7 @@ export class InspectorController {
       });
 
     groups.forEach((groupParams, profileName) => {
-      const isActive = profileName === this._enabledProfile;
-      const wrapper  = document.createElement('div');
-      wrapper.className = 'profile-group' + (isActive ? '' : ' inactive');
+      const wrapper = this._buildProfileGroupWrapper(profileName, profileName === this._enabledProfile);
       wrapper.appendChild(this._buildGroupHeader(profileName, profileName, groupParams, 'profile'));
       groupParams.forEach(p => wrapper.appendChild(this._buildParamRow(p)));
       this._paramsList.appendChild(wrapper);
@@ -271,20 +270,12 @@ export class InspectorController {
    * @param {'custom'|'profile'} type  Controls colour variant and toggle behaviour
    */
   _buildGroupHeader(displayName, sourceKey, groupParams, type) {
-    const isProfile  = type === 'profile';
-    const isEnabled  = isProfile
+    const isProfile = type === 'profile';
+    const isEnabled = isProfile
       ? this._enabledProfile === sourceKey
       : groupParams.every(p => p.enabled);
 
-    const header = document.createElement('div');
-    header.className = `params-source-header source-${type}`;
-
-    const nameEl       = document.createElement('span');
-    nameEl.className   = 'params-source-name';
-    nameEl.textContent = displayName;
-
-    const line = document.createElement('span');
-    line.className = 'params-source-line';
+    const header = this._buildGroupLabel(displayName, `source-${type}`);
 
     // Toggle: radio-style for profiles, toggle-all for custom
     const toggleLabel     = document.createElement('label');
@@ -318,7 +309,7 @@ export class InspectorController {
 
     if (isProfile) {
       // Profiles are managed in the Profiles tab — no remove button here
-      header.append(nameEl, line, toggleLabel);
+      header.append(toggleLabel);
     } else {
       // Custom group can be removed from the inspector
       const removeBtn       = document.createElement('button');
@@ -330,82 +321,32 @@ export class InspectorController {
         this._renderParamRows();
         this._updatePreview();
       });
-      header.append(nameEl, line, toggleLabel, removeBtn);
+      header.append(toggleLabel, removeBtn);
     }
 
     return header;
   }
 
   _buildParamRow(param) {
-    const row = document.createElement('div');
     const sourceClass = param.source === 'default' ? 'source-default'
                       : param.source === 'custom'  ? 'source-custom'
                       : 'source-profile';
-    row.className  = `param-row ${sourceClass}` + (param.enabled ? '' : ' disabled');
-    row.dataset.id = param.id;
-
-    // Toggle
-    const toggleWrapper = document.createElement('div');
-    toggleWrapper.className = 'toggle-wrapper';
-    const label   = document.createElement('label');
-    label.className = 'toggle';
-    label.title   = param.enabled ? 'Disable parameter' : 'Enable parameter';
-    const checkbox = document.createElement('input');
-    checkbox.type    = 'checkbox';
-    checkbox.checked = param.enabled;
-    checkbox.addEventListener('change', () => {
-      param.enabled = checkbox.checked;
-      row.classList.toggle('disabled', !param.enabled);
-      label.title = param.enabled ? 'Disable parameter' : 'Enable parameter';
-      this._updatePreview();
+    return this._buildItemRow(param, {
+      noun:           'parameter',
+      keyPlaceholder: 'key',
+      extraClass:     sourceClass,
+      onToggle:       () => this._updatePreview(),
+      onKeyChange:    () => this._updatePreview(),
+      onValueChange:  () => this._updatePreview(),
+      onDelete: () => {
+        this._params = this._params.filter(p => p.id !== param.id);
+        if (param.source === 'custom' && !this._params.some(p => p.source === 'custom')) {
+          this._paramsList.querySelector('.custom-group')?.remove();
+        }
+        this._paramsEmpty.style.display = this._params.length === 0 ? 'block' : 'none';
+        this._updatePreview();
+      },
     });
-    const track = document.createElement('span');
-    track.className = 'toggle-track';
-    label.append(checkbox, track);
-    toggleWrapper.appendChild(label);
-
-    // Key
-    const keyInput       = document.createElement('input');
-    keyInput.type        = 'text';
-    keyInput.className   = 'param-key';
-    keyInput.value       = param.key;
-    keyInput.placeholder = 'key';
-    keyInput.spellcheck  = false;
-    keyInput.addEventListener('input', () => {
-      param.key = keyInput.value;
-      this._updatePreview();
-    });
-
-    // Value
-    const valueInput       = document.createElement('input');
-    valueInput.type        = 'text';
-    valueInput.className   = 'param-value';
-    valueInput.value       = param.value;
-    valueInput.placeholder = 'value';
-    valueInput.spellcheck  = false;
-    valueInput.addEventListener('input', () => {
-      param.value = valueInput.value;
-      this._updatePreview();
-    });
-
-    // Delete
-    const deleteBtn       = document.createElement('button');
-    deleteBtn.className   = 'btn-delete';
-    deleteBtn.title       = 'Remove parameter';
-    deleteBtn.textContent = '×';
-    deleteBtn.addEventListener('click', () => {
-      this._params = this._params.filter(p => p.id !== param.id);
-      row.remove();
-      // Clean up the custom-group wrapper when the last custom param is removed
-      if (param.source === 'custom' && !this._params.some(p => p.source === 'custom')) {
-        this._paramsList.querySelector('.custom-group')?.remove();
-      }
-      this._paramsEmpty.style.display = this._params.length === 0 ? 'block' : 'none';
-      this._updatePreview();
-    });
-
-    row.append(toggleWrapper, keyInput, valueInput, deleteBtn);
-    return row;
   }
 
   // ── URL building & preview ───────────────────────────────────────────────────
