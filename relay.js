@@ -14,10 +14,14 @@ window.addEventListener('message', (event) => {
   if (event.source !== window) return;
   if (!event.data || event.data.type !== 'RI_INTERCEPTED') return;
 
-  chrome.runtime.sendMessage({
-    type:    'RI_REQUEST',
-    payload: event.data.payload,
-  }).catch(() => {
-    // Background may be inactive — silently discard.
-  });
+  try {
+    chrome.runtime.sendMessage({
+      type:    'RI_REQUEST',
+      payload: event.data.payload,
+    }).catch(() => {
+      // Background may be inactive — silently discard.
+    });
+  } catch (_) {
+    // Extension context invalidated (e.g. after reload) — silently discard.
+  }
 });
