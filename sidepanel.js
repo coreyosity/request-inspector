@@ -13,6 +13,17 @@
 const SESSION_KEY = 'ri_requests';
 const METHODS     = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
+// ── Monitor state ─────────────────────────────────────────────────────────────
+
+let currentTabId = null;
+
+window.addEventListener('beforeunload', () => {
+  if (currentTabId !== null) {
+    chrome.runtime.sendMessage({ type: 'RI_MONITOR_STATE', active: false, tabId: currentTabId })
+      ?.catch(() => {});
+  }
+});
+
 // ── State ─────────────────────────────────────────────────────────────────────
 
 const state = {
@@ -316,6 +327,11 @@ async function sendToInspector(req) {
 async function loadRequestsForTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab) return;
+  currentTabId = tab.id;
+
+  // Tell the background (and relay) that monitoring is active for this tab.
+  chrome.runtime.sendMessage({ type: 'RI_MONITOR_STATE', active: true, tabId: currentTabId })
+    ?.catch(() => {});
 
   const stored = await chrome.storage.session.get(SESSION_KEY);
   const all    = stored[SESSION_KEY] ?? [];

@@ -14,12 +14,43 @@ const SESSION_REQUESTS_KEY = 'ri_requests';
 const SESSION_SETTINGS_KEY = 'ri_settings';
 const MAX_REQUESTS         = 500;
 
+// Tab IDs whose side panel is currently open. Persisted to session storage so
+// it survives service-worker restarts while the panel stays open.
+const monitorActiveTabs = new Set();
+
+async function loadMonitorTabs() {
+  const stored = await chrome.storage.session.get('ri_monitor_tabs')?.catch(() => null);
+  (stored?.['ri_monitor_tabs'] ?? []).forEach(id => monitorActiveTabs.add(id));
+}
+loadMonitorTabs();
+
+async function setMonitorActive(tabId, active) {
+  if (active) monitorActiveTabs.add(tabId);
+  else        monitorActiveTabs.delete(tabId);
+  chrome.storage.session.set({ 'ri_monitor_tabs': [...monitorActiveTabs] });
+  // Push the new state to the content script so the relay gate updates.
+  chrome.tabs.sendMessage(tabId, { type: 'RI_MONITOR_STATE', active }).catch(() => {});
+}
+
 // ── Message handling ──────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'RI_REQUEST') {
-    handleCapturedRequest(message.payload, sender.tab);
+    // Only process requests when the side panel is actively monitoring this tab.
+    if (monitorActiveTabs.has(sender.tab?.id)) {
+      handleCapturedRequest(message.payload, sender.tab);
+    }
     return false;
+  }
+
+  if (message.type === 'RI_MONITOR_STATE') {
+    setMonitorActive(message.tabId, message.active);
+    return false;
+  }
+
+  if (message.type === 'RI_GET_MONITOR_STATE') {
+    sendResponse({ active: monitorActiveTabs.has(sender.tab?.id) });
+    return true;
   }
 
   if (message.type === 'RI_OPEN_SIDE_PANEL') {
@@ -29,16 +60,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
-  if (message.type === 'RI_CLOSE_SIDE_PANEL') {
-    // Side panel closed via its own UI — no programmatic close API exists;
-    // the side panel calls window.close() on itself instead.
-    return false;
-  }
-
   if (message.type === 'RI_CLEAR_REQUESTS') {
     chrome.storage.session.remove(SESSION_REQUESTS_KEY);
     return false;
   }
+});
+
+// Clean up when a tab is closed.
+chrome.tabs.onRemoved.addListener((tabId) => {
+  if (monitorActiveTabs.has(tabId)) setMonitorActive(tabId, false);
 });
 
 // ── Request storage ───────────────────────────────────────────────────────────

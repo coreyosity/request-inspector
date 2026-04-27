@@ -17,11 +17,11 @@ global.chrome = {
     },
   },
   tabs: {
-    query:  vi.fn(),
-    update: vi.fn(),
-    onActivated: {
-      addListener: vi.fn(),
-    },
+    query:       vi.fn(),
+    update:      vi.fn(),
+    sendMessage: vi.fn(),
+    onActivated: { addListener: vi.fn() },
+    onRemoved:   { addListener: vi.fn() },
   },
   declarativeNetRequest: {
     getDynamicRules:    vi.fn(),
